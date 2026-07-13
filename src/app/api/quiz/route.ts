@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonBodyResponse, readJsonBody } from '@/lib/api/request';
 import { isMockApiEnabled } from '@/lib/mock/config';
 import { mockQuiz } from '@/lib/mock/quiz';
 import type { ApiErrorResponse, QuizRequest, QuizResponse } from '@/types/api';
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Partial<QuizRequest>;
+    const result = await readJsonBody<Partial<QuizRequest>>(request);
+
+    if (!result.success) {
+      return invalidJsonBodyResponse();
+    }
+
+    const body = result.data;
 
     if (typeof body.text !== 'string' || !body.text.trim()) {
       return NextResponse.json<ApiErrorResponse>(

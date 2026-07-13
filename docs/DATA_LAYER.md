@@ -81,7 +81,7 @@ validatePdfFile(file);
 - Empty subject, material text, and question values fail validation.
 - Exam dates must be valid `YYYY-MM-DD` calendar dates.
 - Plan `keywords` and `concepts` must be string arrays.
-- PDF files must have a `.pdf` name or `application/pdf` type, must be non-empty, and must stay under the configured size limit.
+- PDF files must have a `.pdf` name and `application/pdf` type, must be non-empty, must stay under the configured size limit, and must include the `%PDF-` signature when validated on the server upload route.
 
 ## C-Owned Files
 

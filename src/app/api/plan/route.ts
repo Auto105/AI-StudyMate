@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonBodyResponse, readJsonBody } from '@/lib/api/request';
 import { isValidIsoDate } from '@/lib/date';
 import { isMockApiEnabled } from '@/lib/mock/config';
 import { getMockPlan } from '@/lib/mock/plan';
@@ -6,7 +7,13 @@ import type { ApiErrorResponse, PlanRequest, PlanResponse } from '@/types/api';
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Partial<PlanRequest>;
+    const result = await readJsonBody<Partial<PlanRequest>>(request);
+
+    if (!result.success) {
+      return invalidJsonBodyResponse();
+    }
+
+    const body = result.data;
 
     if (typeof body.subject !== 'string' || !body.subject.trim()) {
       return NextResponse.json<ApiErrorResponse>(

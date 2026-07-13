@@ -46,7 +46,7 @@ export function MaterialsPage() {
           <p className="mt-2 text-sm leading-6 text-slate-600">
             최대 5MB PDF 1개 업로드와 추출 텍스트 12,000자 제한을 기준으로 설계했습니다.
           </p>
-          <input type="file" accept="application/pdf" className="mt-4 w-full text-sm text-slate-600" />
+          <input type="file" accept="application/pdf,.pdf" className="mt-4 w-full text-sm text-slate-600" />
         </div>
 
         <label className="mt-5 grid gap-2">

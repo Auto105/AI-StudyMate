@@ -8,6 +8,7 @@ AI StudyMate API는 Next.js Route Handler로 구현하며 모든 응답은 JSON�
 
 - 성공 응답은 각 endpoint의 TypeScript 타입과 일치해야 합니다.
 - 실패 응답은 `{ "error": "message" }` 형식을 사용합니다.
+- malformed JSON body는 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
 - 입력값 검증 실패는 `400`을 반환합니다.
 - 아직 실제 구현이 연결되지 않은 경우 `501`을 반환할 수 있습니다.
 - 서버 처리 실패는 `500`을 반환합니다.
@@ -43,7 +44,11 @@ Response: `UploadResponse`
 Validation:
 
 - `text`가 있으면 최대 12,000자까지 반환합니다.
-- `file`이 5MB를 초과하면 `400`을 반환합니다.
+- `file`이 비어 있으면 `400`과 `{ "error": "빈 파일은 업로드할 수 없습니다." }`를 반환합니다.
+- `file`이 PDF가 아니면 `400`과 `{ "error": "PDF 파일만 업로드할 수 있습니다." }`를 반환합니다.
+- `file`이 5MB를 초과하면 `400`과 `{ "error": "PDF 파일은 5MB 이하만 업로드할 수 있습니다." }`를 반환합니다.
+- `file` 내용이 PDF 시그니처(`%PDF-`)가 아니면 `400`과 `{ "error": "올바른 PDF 파일이 아닙니다." }`를 반환합니다.
+- MIME 타입이 비어 있거나 `application/pdf`가 아니면 거부합니다.
 - `text`와 `file`이 모두 없으면 `400`을 반환합니다.
 
 Frontend client:
@@ -80,6 +85,7 @@ Response: `SummarizeResponse`
 Validation:
 
 - `text`는 비어 있지 않은 문자열이어야 합니다.
+- malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
 
 Frontend client:
 
@@ -123,6 +129,7 @@ Validation:
 - `text`는 문자열이어야 합니다.
 - `question`은 비어 있지 않은 문자열이어야 합니다.
 - `text`가 비어 있으면 `grounded: false` 답변을 반환합니다.
+- malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
 
 Frontend client:
 
@@ -179,6 +186,7 @@ Validation:
 - `examDate`는 `YYYY-MM-DD` 형식의 올바른 날짜여야 합니다.
 - `keywords`는 문자열 배열이어야 합니다.
 - `concepts`는 생략 가능하지만, 값이 있으면 문자열 배열이어야 합니다.
+- malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
 
 Rules:
 
@@ -235,6 +243,7 @@ Response: `QuizResponse`
 Validation:
 
 - `text`는 비어 있지 않은 문자열이어야 합니다.
+- malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
 
 Frontend client:
 

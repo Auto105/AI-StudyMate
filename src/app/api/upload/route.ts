@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
+import { validatePdfFile } from '@/lib/pdf';
 import type { ApiErrorResponse, UploadResponse } from '@/types/api';
 
 const MAX_TEXT_LENGTH = 12_000;
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
@@ -20,11 +20,10 @@ export async function POST(request: Request) {
     }
 
     if (fileValue instanceof File) {
-      if (fileValue.size > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json<ApiErrorResponse>(
-          { error: 'PDF 파일은 5MB 이하만 업로드할 수 있습니다.' },
-          { status: 400 },
-        );
+      const validation = await validatePdfFile(fileValue);
+
+      if (!validation.valid) {
+        return NextResponse.json<ApiErrorResponse>({ error: validation.error }, { status: 400 });
       }
 
       return NextResponse.json<UploadResponse>({

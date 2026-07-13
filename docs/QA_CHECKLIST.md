@@ -29,9 +29,11 @@
 - Empty subject fails validation.
 - Invalid exam date strings fail validation.
 - Impossible calendar dates such as `2026-02-31` fail validation.
-- Empty PDF files fail validation.
-- Non-PDF files fail validation.
-- Oversized PDF files fail validation.
+- Malformed JSON on JSON routes returns `400` and `{ "error": "Invalid JSON body." }`.
+- Empty PDF files return `400` and `{ "error": "빈 파일은 업로드할 수 없습니다." }`.
+- Non-PDF files return `400` and `{ "error": "PDF 파일만 업로드할 수 있습니다." }`.
+- PDF files without `%PDF-` signature return `400` and `{ "error": "올바른 PDF 파일이 아닙니다." }`.
+- Oversized PDF files return `400` and `{ "error": "PDF 파일은 5MB 이하만 업로드할 수 있습니다." }`.
 
 ## Demo Flow
 
