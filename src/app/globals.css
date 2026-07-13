@@ -17,11 +17,15 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  color: #14213d;
-  background:
-    radial-gradient(circle at top left, rgba(111, 255, 233, 0.32), transparent 30%),
-    linear-gradient(180deg, #f7f4ea 0%, #eef3f7 100%);
-  font-family: "Segoe UI", "Noto Sans KR", system-ui, sans-serif;
+  color: #191b23;
+  background: #f3f4f6;
+  font-family:
+    "Inter",
+    "Pretendard",
+    "Segoe UI",
+    "Noto Sans KR",
+    system-ui,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -34,4 +38,30 @@ textarea {
 
 button {
   cursor: pointer;
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
