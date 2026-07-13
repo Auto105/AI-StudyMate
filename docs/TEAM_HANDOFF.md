@@ -17,6 +17,44 @@ npm.cmd run build
 
 PowerShell에서 `npm run build`가 실행 정책 때문에 막히면 `npm.cmd run build`를 사용하세요.
 
+## Project MVP (POC)
+
+이번 POC의 최종 목표는 아래와 같습니다.
+
+> **텍스트 + PDF 기반 AI 요약 / 문제 생성 / 일정 관리**
+
+### IN (이번 POC)
+
+- 텍스트 붙여넣기
+- PDF 업로드 (`/api/upload`)
+- AI 요약 (`/api/summarize`)
+- 자료 근거 Q&A (`/api/chat`)
+- 시험일 기반 Today Plan (`/api/plan`)
+- AI 문제 생성 (`/api/quiz`, bonus)
+
+### OpenAI Helper (유지)
+
+아래 파일은 **유지**합니다. 텍스트·PDF에서 추출한 내용을 OpenAI로 처리하는 용도입니다.
+
+```txt
+src/lib/openai.ts   — OpenAI 클라이언트, JSON completion helper
+src/lib/prompts.ts  — summarize / chat / plan / quiz 프롬프트
+```
+
+- 입력 소스는 **텍스트·PDF 추출 텍스트**만 대상으로 합니다.
+- 음성·STT 파이프라인은 이 helper와 **연결하지 않습니다**.
+
+### OUT (이번 POC 제외)
+
+- 음성 직접 녹음
+- 음성 자동 변환(STT)
+- 진도율·완료 토글·학습량 % UI
+- 로그인·멀티유저·RAG·LMS 연동
+
+### 향후 업데이트 예정 (문서만 언급, 구현 안 함)
+
+- DOCX 지원 (선택)
+
 ## B Progress Log
 
 | 항목 | 내용 |
@@ -147,6 +185,8 @@ docs/QA_CHECKLIST.md
 - malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`로 통일합니다.
 - PDF 업로드 검증은 `src/lib/pdf.ts`의 `validatePdfFile()`을 `/api/upload`에서 사용합니다.
 - Quiz는 bonus 기능입니다. Today, PDF upload, Summary, Q&A, Plan보다 먼저 작업하지 않습니다.
+- 음성 녹음·STT·DOCX 업로드는 이번 POC 범위가 아닙니다.
+- `src/lib/openai.ts`, `src/lib/prompts.ts`는 텍스트·PDF 기반 AI 처리용으로 유지합니다.
 - 폴더 구조는 크게 바꾸지 않습니다.
 
 ## Requests for A: Frontend/UI
@@ -164,7 +204,7 @@ src/hooks/useStudyProfile.ts
 
 1. 첫 화면은 반드시 Today로 유지합니다.
 2. Today 화면에는 `Subject`, `Exam Date`, `D-Day`, `Today's Tasks`, `CTA`만 우선 표시합니다.
-3. fancy dashboard, progress %, AI score, study time은 추가하지 않습니다.
+3. fancy dashboard, progress %, AI score, study time, 완료 토글은 추가하지 않습니다.
 4. 자료 탭에서는 PDF 업로드와 텍스트 붙여넣기 흐름을 제공합니다.
 5. 질문 탭은 저장된 자료 기반 Q&A 흐름만 다룹니다.
 6. Quiz는 시간이 남을 때만 연결합니다.
@@ -250,6 +290,13 @@ src/app/api/quiz/route.ts        — OpenAI 실구현 대기
 7. `/api/plan`은 `/api/quiz`보다 먼저 완성합니다.
 8. 자료에 없는 질문은 `"자료에 없습니다."` 의미로 답합니다.
 9. PDF 업로드는 `validatePdfFile()`로만 검증합니다 (Route 내부 중복 검증 금지).
+
+OpenAI Helper 방향:
+
+- `src/lib/openai.ts`, `src/lib/prompts.ts`는 **유지**합니다.
+- summarize / chat / plan / quiz Route에 연결합니다 (STEP 2~6).
+- 입력은 **텍스트·PDF 추출 텍스트**만 사용합니다.
+- 음성 녹음·STT API·UI는 **구현하지 않습니다**.
 
 특히 `/api/plan` 요구사항:
 

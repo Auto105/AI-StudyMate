@@ -1,56 +1,97 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useStudyMaterials } from '@/hooks/useStudyMaterials';
+import { useStudyProfile } from '@/hooks/useStudyProfile';
+import { createStudyPlan } from '@/lib/api/client';
+import { calculateDday, formatDday } from '@/lib/date';
+import { createPlanInput } from '@/lib/plan';
+import type { PlanResponse } from '@/types/api';
 
-const DATE_CHIPS = ['D-5 오늘', 'D-4', 'D-3', 'D-2', 'D-1'];
+const TASK_ACCENTS = ['#06b6d4', '#004ac6', '#7c3aed'];
 
-const TODAY_TASKS = [
-  {
-    title: '1~3장 핵심 개념 복습',
-    description: 'AI 요약을 읽고 주요 용어를 정리하세요',
-    duration: '30분',
-    accent: '#06b6d4',
-  },
-  {
-    title: '프로세스와 스레드 차이 확인',
-    description: '등록한 자료를 기반으로 개념을 비교하세요',
-    duration: '20분',
-    accent: '#004ac6',
-  },
-];
+function formatKoreanDate(isoDate: string) {
+  const date = new Date(`${isoDate}T00:00:00`);
 
-const CALENDAR_DAYS = [
-  { day: '28', muted: true },
-  { day: '29', muted: true },
-  { day: '30', muted: true },
-  { day: '1' },
-  { day: '2' },
-  { day: '3' },
-  { day: '4' },
-  { day: '5' },
-  { day: '6' },
-  { day: '7' },
-  { day: '8' },
-  { day: '9' },
-  { day: '10' },
-  { day: '11' },
-  { day: '12' },
-  { day: '13', today: true },
-  { day: '14' },
-  { day: '15' },
-  { day: '16', warning: true },
-  { day: '17' },
-  { day: '18', exam: true },
-];
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+function formatDayChipLabel(remainingDays: number | null, index: number, fallback: string) {
+  if (remainingDays === null) {
+    return index === 0 ? `${fallback} 오늘` : fallback;
+  }
+
+  if (remainingDays === 0) {
+    return index === 0 ? 'D-Day 오늘' : 'D-Day';
+  }
+
+  const label = `D-${remainingDays}`;
+  return index === 0 ? `${label} 오늘` : label;
+}
+
+function buildDateChips(plan: PlanResponse | null, examDate: string) {
+  const dday = calculateDday(examDate);
+
+  if (!plan || plan.days.length === 0) {
+    return [{ label: formatDayChipLabel(dday, 0, formatDday(examDate)), key: 'today' }];
+  }
+
+  return plan.days.map((day, index) => ({
+    label: formatDayChipLabel(dday !== null ? Math.max(dday - index, 0) : null, index, day.label),
+    key: `${day.date}-${index}`,
+  }));
+}
 
 export function TodayPage() {
-  const [completedTaskIds, setCompletedTaskIds] = useState<number[]>([]);
+  const { profile, setProfile, isReady: isProfileReady } = useStudyProfile();
+  const { material } = useStudyMaterials();
+  const [plan, setPlan] = useState<PlanResponse | null>(null);
+  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
-  function toggleTask(taskIndex: number) {
-    setCompletedTaskIds((current) =>
-      current.includes(taskIndex) ? current.filter((index) => index !== taskIndex) : [...current, taskIndex],
-    );
-  }
+  useEffect(() => {
+    if (!isProfileReady || !profile.examDate.trim()) {
+      return;
+    }
+
+    let isCurrent = true;
+
+    async function loadPlan() {
+      setIsLoadingPlan(true);
+      setPlanError(null);
+
+      try {
+        const planInput = createPlanInput(profile.subject, profile.examDate, material.summary);
+        const result = await createStudyPlan(planInput);
+
+        if (isCurrent) {
+          setPlan(result);
+        }
+      } catch (error) {
+        if (isCurrent) {
+          setPlan(null);
+          setPlanError(error instanceof Error ? error.message : '학습 계획을 불러오지 못했습니다.');
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingPlan(false);
+        }
+      }
+    }
+
+    void loadPlan();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isProfileReady, profile.subject, profile.examDate, material.summary]);
+
+  const dateChips = buildDateChips(plan, profile.examDate);
+  const todayTasks = plan?.today ?? [];
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 xl:px-0">
@@ -61,10 +102,32 @@ export function TodayPage() {
         </p>
       </section>
 
+      <section className="mb-6 grid gap-4 rounded-2xl border border-[#e1e2ed] bg-white p-4 shadow-sm md:grid-cols-2">
+        <label className="grid gap-2">
+          <span className="text-sm font-semibold text-[#434655]">과목</span>
+          <input
+            type="text"
+            value={profile.subject}
+            onChange={(event) => setProfile({ ...profile, subject: event.target.value })}
+            className="rounded-xl border border-[#c3c6d7] px-4 py-3 text-sm outline-none transition focus:border-[#004ac6] focus:ring-4 focus:ring-[#004ac6]/10"
+            placeholder="운영체제"
+          />
+        </label>
+        <label className="grid gap-2">
+          <span className="text-sm font-semibold text-[#434655]">시험일</span>
+          <input
+            type="date"
+            value={profile.examDate}
+            onChange={(event) => setProfile({ ...profile, examDate: event.target.value })}
+            className="rounded-xl border border-[#c3c6d7] px-4 py-3 text-sm outline-none transition focus:border-[#004ac6] focus:ring-4 focus:ring-[#004ac6]/10"
+          />
+        </label>
+      </section>
+
       <div className="hide-scrollbar mb-6 flex items-center gap-2 overflow-x-auto pb-4">
-        {DATE_CHIPS.map((chip, index) => (
+        {dateChips.map((chip, index) => (
           <button
-            key={chip}
+            key={chip.key}
             type="button"
             className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
               index === 0
@@ -72,7 +135,7 @@ export function TodayPage() {
                 : 'border border-[#c3c6d7] bg-white text-[#434655] hover:bg-[#ededf9]'
             }`}
           >
-            {chip}
+            {chip.label}
           </button>
         ))}
       </div>
@@ -84,11 +147,13 @@ export function TodayPage() {
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-[#dbe1ff] px-2.5 py-1 text-xs font-semibold text-[#00174b]">
-                D-5
+                {formatDday(profile.examDate)}
               </span>
-              <span className="text-sm leading-5 text-[#434655]">2026년 7월 18일</span>
+              <span className="text-sm leading-5 text-[#434655]">{formatKoreanDate(profile.examDate)}</span>
             </div>
-            <h2 className="text-2xl font-semibold leading-tight text-[#191b23]">운영체제</h2>
+            <h2 className="text-2xl font-semibold leading-tight text-[#191b23]">
+              {profile.subject.trim() || '과목을 입력하세요'}
+            </h2>
           </div>
 
           <div className="rounded-xl bg-[#ededf9] p-3">
@@ -97,40 +162,41 @@ export function TodayPage() {
         </div>
 
         <div className="space-y-4">
-          {TODAY_TASKS.map((task, index) => {
-            const isCompleted = completedTaskIds.includes(index);
+          {isLoadingPlan ? (
+            <p className="rounded-xl bg-[#f3f3fe] px-4 py-6 text-sm text-[#434655]">오늘 할 일을 생성하는 중...</p>
+          ) : null}
 
-            return (
-              <button
-                key={task.title}
-                type="button"
-                onClick={() => toggleTask(index)}
-                aria-pressed={isCompleted}
-                className="group relative flex w-full items-start gap-4 overflow-hidden rounded-xl border border-transparent bg-[#f3f3fe] p-4 text-left transition hover:border-[#e1e2ed] hover:bg-white"
-              >
-                <div className="absolute bottom-0 left-0 top-0 w-1" style={{ backgroundColor: task.accent }} />
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-[#c3c6d7] transition group-hover:border-[#004ac6]">
-                  {isCompleted ? (
-                    <span className="material-symbols-outlined text-[16px] text-[#004ac6]">check</span>
-                  ) : null}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span
-                    className={`mb-1 block text-sm font-medium leading-5 transition group-hover:text-[#004ac6] ${
-                      isCompleted ? 'text-[#00687a] line-through' : 'text-[#191b23]'
-                    }`}
-                  >
+          {!isLoadingPlan && planError ? (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {planError}
+            </p>
+          ) : null}
+
+          {!isLoadingPlan && !planError && todayTasks.length === 0 ? (
+            <p className="rounded-xl bg-[#f3f3fe] px-4 py-6 text-sm text-[#434655]">
+              시험일을 설정하면 오늘 할 일이 표시됩니다.
+            </p>
+          ) : null}
+
+          {!isLoadingPlan && !planError
+            ? todayTasks.map((task, index) => (
+                <article
+                  key={task.id}
+                  className="group relative overflow-hidden rounded-xl border border-transparent bg-[#f3f3fe] p-4 text-left transition hover:border-[#e1e2ed] hover:bg-white"
+                >
+                  <div
+                    className="absolute bottom-0 left-0 top-0 w-1"
+                    style={{ backgroundColor: TASK_ACCENTS[index % TASK_ACCENTS.length] }}
+                  />
+                  <p className="text-sm font-medium leading-5 text-[#191b23] transition group-hover:text-[#004ac6]">
                     {task.title}
-                  </span>
-                  <span className="mb-2 block text-sm leading-5 text-[#434655]">{task.description}</span>
-                  <span className="flex items-center gap-1 text-xs font-semibold text-[#434655]">
-                    <span className="material-symbols-outlined text-[16px]">schedule</span>
-                    {task.duration}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
+                  </p>
+                  {task.description ? (
+                    <p className="mt-1 text-sm leading-5 text-[#434655]">{task.description}</p>
+                  ) : null}
+                </article>
+              ))
+            : null}
         </div>
 
         <button
@@ -145,7 +211,45 @@ export function TodayPage() {
   );
 }
 
+function buildCalendarDays(examDate: string) {
+  const exam = new Date(`${examDate}T00:00:00`);
+
+  if (Number.isNaN(exam.getTime())) {
+    return [];
+  }
+
+  const year = exam.getFullYear();
+  const month = exam.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const days: Array<{ day: string; muted?: boolean; today?: boolean; exam?: boolean }> = [];
+
+  for (let index = 0; index < firstDay.getDay(); index += 1) {
+    const date = new Date(year, month, index - firstDay.getDay() + 1);
+    days.push({ day: `${date.getDate()}`, muted: true });
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    const iso = `${year}-${`${month + 1}`.padStart(2, '0')}-${`${day}`.padStart(2, '0')}`;
+    days.push({
+      day: `${day}`,
+      today: iso === todayIso,
+      exam: iso === examDate,
+    });
+  }
+
+  return days;
+}
+
 export function TodayUpcomingPanel() {
+  const { profile } = useStudyProfile();
+  const exam = new Date(`${profile.examDate}T00:00:00`);
+  const monthLabel = Number.isNaN(exam.getTime())
+    ? '시험일 미설정'
+    : `${exam.getFullYear()}년 ${exam.getMonth() + 1}월`;
+  const calendarDays = buildCalendarDays(profile.examDate);
+
   return (
     <aside className="hidden h-screen w-[320px] overflow-y-auto border-l border-[#c3c6d7] bg-white px-6 py-8 xl:fixed xl:right-0 xl:top-0 xl:block">
       <h3 className="mb-4 text-xl font-semibold leading-tight text-[#191b23]">Upcoming</h3>
@@ -155,21 +259,15 @@ export function TodayUpcomingPanel() {
           <span className="material-symbols-outlined text-6xl">event_upcoming</span>
         </div>
         <p className="mb-1 text-xs font-semibold text-[#004ac6]">다음 시험</p>
-        <h4 className="mb-2 text-2xl font-semibold leading-tight text-[#191b23]">운영체제 중간고사</h4>
+        <h4 className="mb-2 text-2xl font-semibold leading-tight text-[#191b23]">{profile.subject}</h4>
         <span className="inline-block rounded-full bg-[#f59e0b] px-3 py-1 text-sm font-medium text-white shadow-sm">
-          D-2
+          {formatDday(profile.examDate)}
         </span>
       </section>
 
       <section className="rounded-xl border border-[#e1e2ed] bg-white p-4">
         <div className="mb-4 flex items-center justify-between">
-          <button type="button" className="text-[#434655] transition hover:text-[#004ac6]" aria-label="이전 달">
-            <span className="material-symbols-outlined">chevron_left</span>
-          </button>
-          <span className="text-sm font-medium text-[#191b23]">2026년 7월</span>
-          <button type="button" className="text-[#434655] transition hover:text-[#004ac6]" aria-label="다음 달">
-            <span className="material-symbols-outlined">chevron_right</span>
-          </button>
+          <span className="text-sm font-medium text-[#191b23]">{monthLabel}</span>
         </div>
 
         <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-[#434655]">
@@ -178,19 +276,17 @@ export function TodayUpcomingPanel() {
           ))}
         </div>
         <div className="grid grid-cols-7 gap-1 text-center text-sm leading-7 text-[#191b23]">
-          {CALENDAR_DAYS.map((day, index) => (
+          {calendarDays.map((day, index) => (
             <div
               key={`${day.day}-${index}`}
               className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full ${
                 day.today
                   ? 'bg-[#004ac6] text-white'
-                  : day.warning
-                    ? 'font-bold text-[#f59e0b]'
-                    : day.exam
-                      ? 'font-bold text-[#004ac6]'
-                      : day.muted
-                        ? 'text-[#9ca3af]'
-                        : ''
+                  : day.exam
+                    ? 'font-bold text-[#004ac6]'
+                    : day.muted
+                      ? 'text-[#9ca3af]'
+                      : ''
               }`}
             >
               {day.day}
@@ -198,13 +294,6 @@ export function TodayUpcomingPanel() {
           ))}
         </div>
       </section>
-
-      <div className="relative mt-8 h-32 overflow-hidden rounded-xl border border-[#e1e2ed] bg-[#f3f3fe] shadow-sm">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_30%,rgba(0,74,198,0.22),transparent_28%),radial-gradient(circle_at_74%_48%,rgba(87,223,254,0.34),transparent_24%),linear-gradient(135deg,#ffffff_0%,#ededf9_100%)]" />
-        <div className="absolute left-7 top-7 h-12 w-12 rounded-2xl border border-white/70 bg-white/80 shadow-sm" />
-        <div className="absolute bottom-6 right-8 h-16 w-16 rounded-full border border-white/70 bg-white/60 shadow-sm" />
-        <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
-      </div>
     </aside>
   );
 }
