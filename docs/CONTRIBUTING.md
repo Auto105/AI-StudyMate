@@ -13,8 +13,8 @@
 - `src/app/page.tsx`에는 복잡한 상태나 기능을 넣지 않습니다.
 - 탭별 기능은 `src/components/today`, `src/components/materials`, `src/components/questions`, `src/components/quiz` 안에서 작업합니다.
 - 공통 타입은 `src/types`에 둡니다.
-- API 호출 코드는 `src/lib/api`를 통해 호출합니다.
-- localStorage 접근은 `src/hooks`와 `src/lib/storage`를 사용합니다.
+- API 호출 코드는 `src/lib/api/client.ts`를 통해 호출합니다.
+- localStorage 접근은 `src/hooks`를 통해서만 수행합니다.
 
 ## 공용 파일 수정
 

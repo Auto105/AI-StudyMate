@@ -1,4 +1,5 @@
 import { getDDay } from '@/lib/utils/date';
+import { toIsoDate } from '@/lib/date';
 import type { ChatMessage, StudyProfile, StudyTask } from '@/types/study';
 
 export const DEMO_SUBJECT = '운영체제';
@@ -6,7 +7,7 @@ export const DEMO_SUBJECT = '운영체제';
 export function getDemoExamDate() {
   const date = new Date();
   date.setDate(date.getDate() + 5);
-  return date.toISOString().slice(0, 10);
+  return toIsoDate(date);
 }
 
 export const DEMO_STUDY_PROFILE: StudyProfile = {

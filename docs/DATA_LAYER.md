@@ -1,32 +1,21 @@
 # Data Layer
 
-C 담당 범위는 타입, 상태관리, 캐시, fallback, API client입니다. UI 컴포넌트는 `localStorage`와 `fetch`를 직접 반복하지 않고 이 레이어를 통해 접근합니다.
+C 담당 범위는 타입, 기존 hook 기반 상태관리, validation, 날짜/계획 helper, mock/fallback 데이터, API client 계약입니다.
 
-## Main Hook
+이번 PR에서는 기존 구조를 기준으로 통합합니다.
 
-Use `useStudyData()` from `src/hooks/useStudyData.ts`.
+## Hooks
+
+UI 컴포넌트는 `localStorage`를 직접 호출하지 않고 기존 hook을 사용합니다.
 
 ```ts
-const {
-  profile,
-  setProfile,
-  extractedText,
-  setExtractedText,
-  summaryResult,
-  setSummary,
-  isSummaryCacheHit,
-  chatHistory,
-  appendChatMessage,
-  planInput,
-  planResult,
-  setPlan,
-  isPlanCacheHit,
-  quiz,
-  setQuiz,
-  resetAiResults,
-  clearAll,
-} = useStudyData();
+const { profile, setProfile } = useStudyProfile();
+const { material, setMaterial } = useStudyMaterials();
 ```
+
+- `useStudyProfile()`은 과목과 시험일을 관리합니다.
+- `useStudyMaterials()`는 학습자료 텍스트, 미리보기, 요약 결과를 관리합니다.
+- 실제 `window.localStorage` 접근은 `useLocalStorage()` 내부에만 둡니다.
 
 ## Storage Keys
 
@@ -35,72 +24,77 @@ Defined in `src/lib/storage/keys.ts`.
 ```txt
 ai-studymate:study-profile
 ai-studymate:study-materials
-study.extractedText
-study.summary
-study.chatHistory
-study.plan
-study.quiz
 ```
 
-The first two keys keep compatibility with the current UI hooks. The `study.*` keys support the unified C data hook.
+## API Client
 
-## Reset Rules
+기존 client를 기준으로 사용합니다.
 
-- `setExtractedText(text)` resets summary, plan, and quiz.
-- `setSummary(result)` stores a cache tied to the current extracted text hash.
-- `setPlan(input, result)` stores a cache tied to subject, exam date, keywords, and concepts.
-- `resetAiResults()` clears summary, plan, and quiz but keeps profile, text, and chat.
-- `clearAll()` returns the app to the demo initial state.
+```ts
+import {
+  uploadMaterial,
+  summarizeMaterial,
+  askQuestion,
+  createStudyPlan,
+  createQuiz,
+} from '@/lib/api/client';
+```
 
-## Cache Rules
+```ts
+uploadMaterial(formData);
+summarizeMaterial({ text });
+askQuestion({ text, question });
+createStudyPlan({ subject, examDate, keywords, concepts });
+createQuiz({ text });
+```
 
-Implemented in `src/lib/cache.ts`.
+## Date And Plan Helpers
 
-- Summary cache hit: same normalized extracted text.
-- Plan cache hit: same subject, exam date, keywords, and concepts.
-- Changing exam date should invalidate the plan cache.
-- Changing extracted text should invalidate summary, plan, and quiz.
+Implemented in `src/lib/date.ts` and `src/lib/plan.ts`.
 
-## Plan Helpers
-
-Implemented in `src/lib/plan.ts`.
-
+- `calculateDday(examDate)`
+- `formatDday(examDate)`
+- `isValidIsoDate(value)`
 - `createPlanInput(subject, examDate, summary)`
 - `getPlanLengthByDday(examDate)`
 - `selectFallbackPlanByDday(input)`
 - `toLegacyStudyTasks(tasks)`
 - `toLegacyPlanDays(plan)`
 
+Date helpers use local calendar dates instead of UTC string slicing, so D-day and generated fallback plan dates do not shift by timezone. Invalid dates such as `2026-02-31` are rejected by `isValidIsoDate()`.
+
 Fallback plans support D-1, D-3, D-5, and D-7 style demos. D-5 returns a 5-day plan.
 
-## API Client
+## Validation Helpers
 
-Use `src/lib/api.ts` for the handoff contract:
+Implemented in `src/lib/validators.ts` and `src/lib/pdf.ts`.
 
 ```ts
-uploadPdf(file, { fallbackOnError: true });
-summarizeText(text, { fallbackOnError: true });
-askQuestion(text, question, { fallbackOnError: true });
-createStudyPlan(planInput, { fallbackOnError: true });
-generateQuiz(text, { fallbackOnError: true });
+validateRequiredText(value, fieldName);
+validateStudyText(text);
+validateQuestion(question);
+validateStudyProfile(profile);
+validatePlanInput(planInput);
+validatePdfFile(file);
 ```
 
-This wrapper validates API responses and falls back to `src/data/demoFallbacks.ts` when requested.
-
-The older `src/lib/api/client.ts` remains available for the current UI, but new UI work should prefer `src/lib/api.ts`.
+- Empty subject, material text, and question values fail validation.
+- Exam dates must be valid `YYYY-MM-DD` calendar dates.
+- Plan `keywords` and `concepts` must be string arrays.
+- PDF files must have a `.pdf` name or `application/pdf` type, must be non-empty, and must stay under the configured size limit.
 
 ## C-Owned Files
 
 ```txt
 src/types/*
 src/hooks/useLocalStorage.ts
-src/hooks/useStudyData.ts
-src/lib/storage*
-src/lib/cache.ts
+src/hooks/useStudyMaterials.ts
+src/hooks/useStudyProfile.ts
+src/lib/api/client.ts
+src/lib/storage/keys.ts
 src/lib/date.ts
 src/lib/pdf.ts
 src/lib/plan.ts
-src/lib/api.ts
 src/lib/validators.ts
 src/lib/mock/*
 src/data/*

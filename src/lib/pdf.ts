@@ -5,6 +5,10 @@ export function validatePdfFile(file: File, maxSizeMb = DEFAULT_MAX_SIZE_MB) {
     return { ok: false, error: 'PDF 파일만 업로드할 수 있습니다.' } as const;
   }
 
+  if (file.size === 0) {
+    return { ok: false, error: '비어 있는 PDF 파일은 업로드할 수 없습니다.' } as const;
+  }
+
   const maxSizeBytes = maxSizeMb * 1024 * 1024;
 
   if (file.size > maxSizeBytes) {

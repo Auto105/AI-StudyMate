@@ -3,28 +3,35 @@
 ## C Data Layer
 
 - Profile persists after refresh.
-- Extracted text persists after refresh.
-- Summary persists after refresh when text is unchanged.
-- Plan persists after refresh when subject, exam date, keywords, and concepts are unchanged.
-- Quiz persists after refresh.
-- `setExtractedText()` clears summary, plan, and quiz.
-- Same extracted text produces a summary cache hit.
-- Different extracted text produces a summary cache miss.
-- Same subject, exam date, keywords, and concepts produce a plan cache hit.
-- Changing exam date produces a plan cache miss.
-- Changing summary keywords or concepts produces a plan cache miss.
+- Material text persists after refresh.
+- Material summary persists after refresh.
+- `useStudyProfile()` owns subject and exam date storage.
+- `useStudyMaterials()` owns material text, preview, and summary storage.
+- UI components do not call `localStorage` directly.
 
-## API Wrapper
+## API Routes And Client
 
-- `uploadPdf(..., { fallbackOnError: true })` returns demo extracted text when upload fails.
-- `summarizeText(..., { fallbackOnError: true })` returns demo summary when API fails.
-- `askQuestion(..., { fallbackOnError: true })` returns a grounded demo answer for process/thread questions.
-- Out-of-material fallback answer is `자료에 없습니다.`
-- `createStudyPlan(..., { fallbackOnError: true })` returns a D-day based fallback plan.
+- `uploadMaterial(formData)` returns `{ text, truncated }`.
+- `summarizeMaterial({ text })` returns `{ keywords, concepts, easyExplain }`.
+- `askQuestion({ text, question })` returns `{ answer, grounded }`.
+- Out-of-material answer uses `자료에 없습니다.`.
+- `createStudyPlan({ subject, examDate, keywords, concepts })` returns `StudyTask[]` based `today` and `days`.
 - D-5 plan returns 5 days.
 - D-3 plan returns 3 days.
 - D-1 plan returns 1 day.
-- `generateQuiz(..., { fallbackOnError: true })` returns demo MCQ/OX data.
+- Invalid `/api/plan` `concepts` values return `400` and `{ "error": "..." }`.
+- `createQuiz({ text })` returns MCQ `choices` and OX `statement` fields.
+
+## Validation
+
+- Empty study material text fails validation.
+- Empty question text fails validation.
+- Empty subject fails validation.
+- Invalid exam date strings fail validation.
+- Impossible calendar dates such as `2026-02-31` fail validation.
+- Empty PDF files fail validation.
+- Non-PDF files fail validation.
+- Oversized PDF files fail validation.
 
 ## Demo Flow
 

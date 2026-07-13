@@ -3,6 +3,7 @@ import { getMockChatResponse } from '@/lib/mock/chat';
 import { getMockPlan } from '@/lib/mock/plan';
 import { mockQuiz } from '@/lib/mock/quiz';
 import { mockSummary } from '@/lib/mock/summary';
+import { toIsoDate } from '@/lib/date';
 import { selectFallbackPlanByDday } from '@/lib/plan';
 import type { ApiUploadResponse, PlanInput, QuizResult } from '@/types/study';
 
@@ -49,5 +50,5 @@ export const FALLBACK_QUIZ: QuizResult = {
 function getDateAfterDays(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return toIsoDate(date);
 }

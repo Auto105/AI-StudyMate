@@ -2,10 +2,64 @@ import type {
   ApiChatResponse,
   ApiErrorResponse,
   ApiUploadResponse,
+  PlanInput,
   QuizResult,
+  StudyProfile,
   StudyPlan,
   SummaryResult,
 } from '@/types/study';
+import { isValidIsoDate } from '@/lib/date';
+
+export type ValidationResult = { ok: true; error: null } | { ok: false; error: string };
+
+export function validateRequiredText(value: string, fieldName: string): ValidationResult {
+  return value.trim()
+    ? { ok: true, error: null }
+    : { ok: false, error: `${fieldName}은 비어 있을 수 없습니다.` };
+}
+
+export function validateStudyProfile(profile: StudyProfile): ValidationResult {
+  const subjectResult = validateRequiredText(profile.subject, '과목');
+
+  if (!subjectResult.ok) {
+    return subjectResult;
+  }
+
+  if (!isValidIsoDate(profile.examDate)) {
+    return { ok: false, error: '시험일은 YYYY-MM-DD 형식의 올바른 날짜여야 합니다.' };
+  }
+
+  return { ok: true, error: null };
+}
+
+export function validatePlanInput(input: PlanInput): ValidationResult {
+  const profileResult = validateStudyProfile({
+    subject: input.subject,
+    examDate: input.examDate,
+  });
+
+  if (!profileResult.ok) {
+    return profileResult;
+  }
+
+  if (!isStringArray(input.keywords)) {
+    return { ok: false, error: 'keywords는 문자열 배열이어야 합니다.' };
+  }
+
+  if (!isStringArray(input.concepts)) {
+    return { ok: false, error: 'concepts는 문자열 배열이어야 합니다.' };
+  }
+
+  return { ok: true, error: null };
+}
+
+export function validateStudyText(text: string): ValidationResult {
+  return validateRequiredText(text, '학습자료');
+}
+
+export function validateQuestion(question: string): ValidationResult {
+  return validateRequiredText(question, '질문');
+}
 
 export function isUploadResponse(value: unknown): value is ApiUploadResponse {
   return isRecord(value) && typeof value.extractedText === 'string';

@@ -1,4 +1,4 @@
-import { calculateDday, getTodayIso } from '@/lib/date';
+import { calculateDday, getTodayIso, toIsoDate } from '@/lib/date';
 import type { PlanDay, PlanInput, StudyPlan, StudyTask, SummaryResult } from '@/types/study';
 
 const DEFAULT_KEYWORDS = ['프로세스', '스레드', 'CPU 스케줄링'];
@@ -167,7 +167,7 @@ function createFallbackPlan(
 
     return {
       day: index + 1,
-      date: date.toISOString().slice(0, 10),
+      date: toIsoDate(date),
       title: index === length - 1 ? `${subject} 시험 전 정리` : template.title,
       tasks: template.tasks,
     };

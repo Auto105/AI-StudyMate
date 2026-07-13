@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isValidIsoDate } from '@/lib/date';
 import { isMockApiEnabled } from '@/lib/mock/config';
 import { getMockPlan } from '@/lib/mock/plan';
 import type { ApiErrorResponse, PlanRequest, PlanResponse } from '@/types/api';
@@ -21,9 +22,26 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!isValidIsoDate(body.examDate)) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: 'examDate는 YYYY-MM-DD 형식의 올바른 날짜여야 합니다.' },
+        { status: 400 },
+      );
+    }
+
     if (!Array.isArray(body.keywords) || body.keywords.some((keyword) => typeof keyword !== 'string')) {
       return NextResponse.json<ApiErrorResponse>(
         { error: 'keywords는 문자열 배열이어야 합니다.' },
+        { status: 400 },
+      );
+    }
+
+    if (
+      body.concepts !== undefined &&
+      (!Array.isArray(body.concepts) || body.concepts.some((concept) => typeof concept !== 'string'))
+    ) {
+      return NextResponse.json<ApiErrorResponse>(
+        { error: 'concepts는 문자열 배열이어야 합니다.' },
         { status: 400 },
       );
     }
