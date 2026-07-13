@@ -13,3 +13,5 @@ vite.config.js
 vite.config.d.ts
 .DS_Store
 RunCodexStudySyncAI.bat
+.api-contract-update/
+.review-feature/
