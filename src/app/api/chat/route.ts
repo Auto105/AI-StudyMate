@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getMockChatResponse } from '@/lib/mock/chat';
 import { isMockApiEnabled } from '@/lib/mock/config';
+import { readJsonBody } from '@/lib/api/request';
 import type { ApiErrorResponse, ChatRequest, ChatResponse } from '@/types/api';
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Partial<ChatRequest>;
+    const body = await readJsonBody<Partial<ChatRequest>>(request);
 
-    if (typeof body.text !== 'string') {
+    if (!body || typeof body.text !== 'string') {
       return NextResponse.json<ApiErrorResponse>(
         { error: 'text는 문자열이어야 합니다.' },
         { status: 400 },

@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { isMockApiEnabled } from '@/lib/mock/config';
 import { getMockPlan } from '@/lib/mock/plan';
+import { readJsonBody } from '@/lib/api/request';
 import type { ApiErrorResponse, PlanRequest, PlanResponse } from '@/types/api';
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Partial<PlanRequest>;
+    const body = await readJsonBody<Partial<PlanRequest>>(request);
 
-    if (typeof body.subject !== 'string' || !body.subject.trim()) {
+    if (!body || typeof body.subject !== 'string' || !body.subject.trim()) {
       return NextResponse.json<ApiErrorResponse>(
         { error: 'subject는 비어 있지 않은 문자열이어야 합니다.' },
         { status: 400 },

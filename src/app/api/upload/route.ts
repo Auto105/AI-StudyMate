@@ -27,6 +27,13 @@ export async function POST(request: Request) {
         );
       }
 
+      if (fileValue.type && fileValue.type !== 'application/pdf') {
+        return NextResponse.json<ApiErrorResponse>(
+          { error: 'PDF 파일만 업로드할 수 있습니다.' },
+          { status: 400 },
+        );
+      }
+
       return NextResponse.json<UploadResponse>({
         text: 'PDF 텍스트 추출은 아직 구현되지 않았습니다. 현재는 Mock 업로드 응답입니다.',
         truncated: false,

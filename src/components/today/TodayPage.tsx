@@ -1,15 +1,50 @@
 'use client';
 
+import { useEffect, useMemo } from 'react';
 import { Card } from '@/components/common/Card';
 import { SectionHeading } from '@/components/common/SectionHeading';
 import { getDemoTodayTasks } from '@/constants/demo';
+import { useStudyMaterials } from '@/hooks/useStudyMaterials';
+import { useStudyPlan } from '@/hooks/useStudyPlan';
 import { useStudyProfile } from '@/hooks/useStudyProfile';
+import { createStudyPlan } from '@/lib/api/client';
 import { getDDay } from '@/lib/utils/date';
 
 export function TodayPage() {
-  const { profile, setProfile } = useStudyProfile();
+  const { profile, setProfile, isReady: isProfileReady } = useStudyProfile();
+  const { material, isReady: isMaterialsReady } = useStudyMaterials();
+  const { plan, setPlan } = useStudyPlan();
   const dDay = getDDay(profile.examDate);
-  const todayTasks = getDemoTodayTasks(profile.examDate);
+  const keywords = useMemo(() => material.summary?.keywords ?? [], [material.summary]);
+  const keywordKey = keywords.join('|');
+  const hasCurrentPlan = plan?.subject === profile.subject && plan.examDate === profile.examDate;
+  const todayTasks = hasCurrentPlan ? plan.today : getDemoTodayTasks(profile.examDate);
+
+  useEffect(() => {
+    if (!isProfileReady || !isMaterialsReady || !profile.subject.trim() || !profile.examDate) {
+      return;
+    }
+
+    let isCurrent = true;
+
+    void createStudyPlan({
+      subject: profile.subject,
+      examDate: profile.examDate,
+      keywords,
+    })
+      .then((response) => {
+        if (isCurrent) {
+          setPlan({ subject: profile.subject, examDate: profile.examDate, ...response });
+        }
+      })
+      .catch(() => {
+        // The existing D-day mock tasks remain visible while a plan request fails.
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isMaterialsReady, isProfileReady, keywordKey, profile.examDate, profile.subject, setPlan]);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">

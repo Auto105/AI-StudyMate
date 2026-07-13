@@ -13,6 +13,7 @@ export function QuestionsPage() {
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(DEMO_CHAT_MESSAGES);
   const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const hasMaterial = material.text.trim().length > 0;
 
   async function handleSubmit() {
@@ -31,6 +32,7 @@ export function QuestionsPage() {
     setMessages((current) => [...current, userMessage]);
     setQuestion('');
     setIsSending(true);
+    setError(null);
 
     try {
       const response = await askQuestion({
@@ -47,6 +49,8 @@ export function QuestionsPage() {
           grounded: response.grounded,
         },
       ]);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : '질문 요청에 실패했습니다.');
     } finally {
       setIsSending(false);
     }
@@ -103,6 +107,7 @@ export function QuestionsPage() {
           {isSending ? '전송 중...' : '질문 전송'}
         </button>
       </div>
+      {error ? <p className="mt-3 text-sm font-semibold text-red-700">{error}</p> : null}
     </Card>
   );
 }
