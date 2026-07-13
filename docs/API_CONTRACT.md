@@ -1,8 +1,24 @@
 # API Contract
 
+## Runtime Mode
+
+`USE_MOCK_API` defaults to `true` when unset.
+
+### `USE_MOCK_API=true`
+
+- `POST /api/summarize`, `POST /api/chat`, `POST /api/plan`, and `POST /api/quiz` return their Mock JSON responses.
+- No OpenAI request is made.
+- `POST /api/upload` accepts pasted text or a validated PDF and returns `{ text, truncated }`.
+
+### `USE_MOCK_API=false`
+
+- `POST /api/chat` calls OpenAI and requires `OPENAI_API_KEY`.
+- `POST /api/summarize`, `POST /api/plan`, and `POST /api/quiz` currently return `501` with `{ "error": "..." }`.
+- `POST /api/upload` continues to accept pasted text or a validated PDF and returns `{ text, truncated }`.
+
 AI StudyMate API는 Next.js Route Handler로 구현하며 모든 응답은 JSON입니다.
 
-현재 PR에서는 실제 Route가 반환하는 형식을 기준으로 문서화합니다. PDF 업로드는 서버에서 텍스트를 추출하고, OpenAI 기반 summarize/chat/plan/quiz는 Mock 응답을 유지할 수 있습니다.
+현재 PR에서는 실제 Route가 반환하는 형식을 기준으로 문서화합니다. Mock/non-Mock 동작은 위 Runtime Mode를 기준으로 하며, PDF 업로드는 서버에서 텍스트를 추출합니다.
 
 ## Common Rules
 
