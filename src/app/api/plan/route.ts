@@ -29,7 +29,9 @@ export async function POST(request: Request) {
     }
 
     if (isMockApiEnabled()) {
-      return NextResponse.json<PlanResponse>(getMockPlan(body.subject, body.examDate));
+      return NextResponse.json<PlanResponse>(
+        getMockPlan(body.subject, body.examDate, body.keywords, body.concepts ?? []),
+      );
     }
 
     return NextResponse.json<ApiErrorResponse>(

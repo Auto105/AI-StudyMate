@@ -1,5 +1,5 @@
 import type { OxQuestion, QuizQuestion } from './quiz';
-import type { PlanDay, StudyTask } from './study';
+import type { PlanDay, StudyPlan, StudyTask } from './study';
 
 export interface ApiErrorResponse {
   error: string;
@@ -34,12 +34,15 @@ export interface PlanRequest {
   subject: string;
   examDate: string;
   keywords: string[];
+  concepts?: string[];
 }
 
 export interface PlanResponse {
   today: StudyTask[];
   days: PlanDay[];
 }
+
+export type StudyPlanResponse = StudyPlan;
 
 export interface QuizRequest {
   text: string;

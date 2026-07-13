@@ -1,56 +1,224 @@
 # API Contract
 
-모든 API는 일관되게 JSON 응답을 반환합니다. 입력값 검증 실패는 `400`, 아직 실제 구현이 연결되지 않은 경우는 `501`, 서버 처리 실패는 `500`을 사용합니다.
+AI StudyMate의 API는 모두 Next.js Route Handler로 구현하며, 응답은 항상 JSON입니다.
 
-## Phase 매핑
+현재 POC에서는 mock 응답을 먼저 안정화하고, 이후 OpenAI와 PDF parser를 연결합니다.
 
-필수 Phase 순서는 `P0 → P1 → P2 → P4 → P5`입니다. `P3 Quiz`는 보너스입니다.
+## Common Rules
 
-| API | Phase | 담당 화면 | Request | Response | fallback |
-| --- | --- | --- | --- | --- | --- |
-| `/api/upload` | P1 | 자료 | `multipart`의 `file` 또는 `text` | `{ text: string; truncated: boolean }` | PDF 미구현 시 Mock 텍스트 또는 텍스트 붙여넣기 |
-| `/api/summarize` | P2 | 자료 | `{ text: string }` | `{ keywords: string[]; concepts: string[]; easyExplain: string }` | Mock summary, 추후 `cache/summarize.json` |
-| `/api/chat` | P2 | 질문 | `{ text: string; question: string }` | `{ answer: string; grounded: boolean }` | 자료 밖 질문은 `자료에 없습니다` |
-| `/api/plan` | P4 | 오늘 | `{ subject: string; examDate: string; keywords: string[] }` | `{ today: StudyTask[]; days: PlanDay[] }` | D-5/D-2 Mock plan, 추후 `cache/plan.json` |
-| `/api/quiz` | P3 보너스 | 시험 | `{ text: string }` | `{ mcq: QuizQuestion[]; ox: OxQuestion[] }` | Mock quiz, 추후 `cache/quiz.json` |
+- 성공 응답은 각 endpoint의 TypeScript 타입과 일치해야 합니다.
+- 실패 응답은 `{ "error": "message" }` 형식을 사용합니다.
+- 입력값 검증 실패는 `400`을 사용합니다.
+- 아직 실제 구현이 연결되지 않은 경우 `501`을 사용할 수 있습니다.
+- 서버 처리 실패는 `500`을 사용합니다.
+- 자료에 없는 질문은 `"자료에 없습니다."` 의미로 답합니다.
 
-## 제한
+## POST /api/upload
 
-| 항목 | 제한 |
-| --- | --- |
-| PDF 파일 크기 | 5MB 이하 |
-| 추출 텍스트 길이 | 12,000자 |
-| Q&A 근거 | 업로드/붙여넣기 된 자료 내부로 제한 |
-| 응답 목표 | 5초 이내를 목표로 설계 |
+Phase: P1 PDF Upload
 
-## 공통 오류 응답
+Request:
 
-```ts
+```txt
+multipart/form-data
+file: PDF
+```
+
+Current fallback request:
+
+```txt
+multipart/form-data
+text: pasted lecture text
+```
+
+Response:
+
+```json
 {
-  error: string;
+  "extractedText": "운영체제는 프로세스, 스레드, CPU 스케줄링을 관리한다..."
 }
 ```
 
-## 자료 밖 질문 응답 규칙
+Legacy response currently supported by the C API wrapper:
 
-자료에 근거가 없으면 다음 의미의 응답을 반환합니다.
-
-```ts
+```json
 {
-  answer: "자료에 없습니다. 업로드한 학습자료에는 해당 질문에 답할 근거가 충분하지 않습니다.",
-  grounded: false
+  "text": "운영체제는 프로세스, 스레드, CPU 스케줄링을 관리한다...",
+  "truncated": false
 }
 ```
 
-## 타입 위치
+Frontend should call:
 
-- API 타입: `src/types/api.ts`
-- 학습 계획 타입: `src/types/study.ts`
-- 퀴즈 타입: `src/types/quiz.ts`
+```ts
+uploadPdf(file, { fallbackOnError: true });
+```
 
-## Mock 응답 위치
+## POST /api/summarize
 
-- 요약: `src/lib/mock/summary.ts`
-- 질문: `src/lib/mock/chat.ts`
-- 계획: `src/lib/mock/plan.ts`
-- 퀴즈: `src/lib/mock/quiz.ts`
+Phase: P2 Summary
+
+Request:
+
+```json
+{
+  "text": "강의자료에서 추출된 텍스트..."
+}
+```
+
+Response:
+
+```json
+{
+  "keywords": ["프로세스", "스레드", "CPU 스케줄링"],
+  "concepts": [
+    "프로세스는 독립적인 실행 단위이다.",
+    "스레드는 프로세스 내부의 실행 흐름이다."
+  ],
+  "easyExplain": "운영체제는 여러 프로그램이 동시에 잘 실행되도록 자원을 관리한다."
+}
+```
+
+Frontend should call:
+
+```ts
+summarizeText(extractedText, { fallbackOnError: true });
+```
+
+## POST /api/chat
+
+Phase: P2 Materials Q&A
+
+Request:
+
+```json
+{
+  "text": "강의자료에서 추출된 텍스트...",
+  "question": "프로세스와 스레드 차이?"
+}
+```
+
+Response:
+
+```json
+{
+  "answer": "프로세스는 독립적인 자원 단위이고, 스레드는 프로세스 안에서 실행되는 작업 흐름입니다.",
+  "grounded": true
+}
+```
+
+Out-of-material response:
+
+```json
+{
+  "answer": "자료에 없습니다.",
+  "grounded": false
+}
+```
+
+Frontend should call:
+
+```ts
+askQuestion(extractedText, question, { fallbackOnError: true });
+```
+
+## POST /api/plan
+
+Phase: P4 Today Plan
+
+Request:
+
+```json
+{
+  "subject": "운영체제",
+  "examDate": "2026-07-18",
+  "keywords": ["프로세스", "스레드", "CPU 스케줄링"],
+  "concepts": [
+    "프로세스는 독립적인 실행 단위이다.",
+    "스레드는 프로세스 내부의 실행 흐름이다."
+  ]
+}
+```
+
+Canonical response:
+
+```json
+{
+  "today": [
+    "프로세스와 스레드 차이를 표로 정리한다.",
+    "CPU 스케줄링 핵심 용어를 암기한다."
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-07-14",
+      "title": "핵심 개념 정리",
+      "tasks": ["프로세스", "스레드", "문맥 전환 개념 정리"]
+    }
+  ]
+}
+```
+
+Legacy response currently supported by the C API wrapper:
+
+```json
+{
+  "today": [{ "id": "today-task-1", "title": "프로세스와 스레드 차이를 표로 정리한다." }],
+  "days": [
+    {
+      "date": "2026-07-14",
+      "label": "핵심 개념 정리",
+      "tasks": [{ "id": "day-1-task-1", "title": "프로세스 정리" }]
+    }
+  ]
+}
+```
+
+Rules:
+
+- The plan must change based on D-day.
+- D-5 demo should return a 5-day plan.
+- Summary `keywords` and `concepts` should influence tasks.
+- Quiz must not block this endpoint.
+
+Frontend should call:
+
+```ts
+createStudyPlan(planInput, { fallbackOnError: true });
+```
+
+## POST /api/quiz
+
+Phase: P3 Bonus
+
+Request:
+
+```json
+{
+  "text": "강의자료에서 추출된 텍스트..."
+}
+```
+
+Canonical response:
+
+```json
+{
+  "mcq": [
+    {
+      "question": "프로세스에 대한 설명으로 가장 적절한 것은?",
+      "options": ["프로세스 내부의 실행 흐름이다.", "실행 중인 프로그램의 독립적인 자원 단위이다."],
+      "answer": "실행 중인 프로그램의 독립적인 자원 단위이다.",
+      "explanation": "프로세스는 독립적인 주소 공간과 자원을 가진다."
+    }
+  ],
+  "ox": [
+    {
+      "question": "스레드는 같은 프로세스의 메모리 공간을 공유할 수 있다.",
+      "answer": true,
+      "explanation": "공유 때문에 효율적이지만 동기화 문제가 생길 수 있다."
+    }
+  ]
+}
+```
+
+Quiz is optional. It should be implemented only after PDF upload, summary, Q&A, and Today plan are stable.
