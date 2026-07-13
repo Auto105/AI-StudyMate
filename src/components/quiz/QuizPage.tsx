@@ -11,17 +11,13 @@ export function QuizPage() {
   const { material } = useStudyMaterials();
   const [quiz, setQuiz] = useState<QuizResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleGenerate() {
     setIsGenerating(true);
-    setError(null);
 
     try {
       const response = await createQuiz({ text: material.text || '운영체제 기본 자료' });
       setQuiz(response);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : '문제 생성 요청에 실패했습니다.');
     } finally {
       setIsGenerating(false);
     }
@@ -43,7 +39,6 @@ export function QuizPage() {
       >
         {isGenerating ? '생성 중...' : '문제 생성'}
       </button>
-      {error ? <p className="mt-3 text-sm font-semibold text-red-700">{error}</p> : null}
 
       {!quiz ? (
         <div className="mt-5 rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">

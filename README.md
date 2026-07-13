@@ -98,14 +98,12 @@ src/
 
 ## Mock 모드와 fallback
 
-`USE_MOCK_API=true`이면 upload, summarize, chat, plan, quiz가 POC용 Mock 응답을 반환합니다.
+`USE_MOCK_API=true`이면 summarize, chat, plan, quiz가 Mock 응답을 반환합니다.
 
 - `summary`: 요약 키워드·개념·쉬운 설명 Mock 반환
 - `chat`: 자료 근거 질문만 답변하고, 자료 밖 질문은 `자료에 없습니다` 반환
 - `plan`: D-5와 D-2에서 서로 다른 오늘 할 일을 반환
 - `quiz`: 보너스 기능용 MCQ/OX Mock 반환
-
-Today plan은 과목명·시험일·요약 키워드를 `/api/plan`으로 전달하고, 마지막 정상 응답을 localStorage에 저장합니다. 동일한 과목과 시험일에서는 저장된 plan을 먼저 표시하고 새 응답으로 갱신합니다.
 
 캐시 파일 기반 fallback은 로드맵의 P5 범위이지만, 이번 작업에서는 실제 `cache/*.json` 파일과 캐시 로직을 구현하지 않았습니다.
 
@@ -139,11 +137,3 @@ Today plan은 과목명·시험일·요약 키워드를 `/api/plan`으로 전달
 - OpenAI 요약/질문/계획/퀴즈 생성 연결
 - cache fallback 구현
 - Vercel 환경변수 설정과 배포
-
-## Vercel 배포 준비
-
-- Framework Preset: `Next.js`
-- Build Command: `npm run build`
-- Node.js Version: `20.9.0` 이상 (Next.js 16 최소 요구사항)
-- Environment Variables: `USE_MOCK_API=true`을 Preview/Production에 설정합니다. 실제 OpenAI 연동 전까지 `OPENAI_API_KEY`는 필요하지 않습니다.
-- 배포 전 로컬에서 `npm install`과 `npm run build`가 성공하는지 확인합니다.

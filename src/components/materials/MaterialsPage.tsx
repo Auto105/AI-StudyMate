@@ -4,33 +4,12 @@ import { useState } from 'react';
 import { Card } from '@/components/common/Card';
 import { SectionHeading } from '@/components/common/SectionHeading';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
-import { summarizeMaterial, uploadMaterial } from '@/lib/api/client';
+import { summarizeMaterial } from '@/lib/api/client';
 
 export function MaterialsPage() {
   const { material, setMaterial } = useStudyMaterials();
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function handleUpload(file: File | null) {
-    if (!file) {
-      return;
-    }
-
-    setIsUploading(true);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await uploadMaterial(formData);
-      setMaterial({ text: response.text, preview: response.text.slice(0, 280) });
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : '업로드 요청에 실패했습니다.');
-    } finally {
-      setIsUploading(false);
-    }
-  }
 
   async function handleSummary() {
     const text = material.text.trim();
@@ -67,13 +46,7 @@ export function MaterialsPage() {
           <p className="mt-2 text-sm leading-6 text-slate-600">
             최대 5MB PDF 1개 업로드와 추출 텍스트 12,000자 제한을 기준으로 설계했습니다.
           </p>
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(event) => void handleUpload(event.target.files?.[0] ?? null)}
-            disabled={isUploading}
-            className="mt-4 w-full text-sm text-slate-600 disabled:cursor-wait"
-          />
+          <input type="file" accept="application/pdf" className="mt-4 w-full text-sm text-slate-600" />
         </div>
 
         <label className="mt-5 grid gap-2">
