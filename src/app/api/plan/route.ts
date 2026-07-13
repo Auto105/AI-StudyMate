@@ -14,7 +14,6 @@ export async function POST(request: Request) {
     }
 
     const body = result.data;
-
     if (typeof body.subject !== 'string' || !body.subject.trim()) {
       return NextResponse.json<ApiErrorResponse>(
         { error: 'subject는 비어 있지 않은 문자열이어야 합니다.' },

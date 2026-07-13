@@ -183,10 +183,10 @@ Response: `PlanResponse`
 Validation:
 
 - `subject`는 비어 있지 않은 문자열이어야 합니다.
+- malformed JSON body는 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
 - `examDate`는 `YYYY-MM-DD` 형식의 올바른 날짜여야 합니다.
 - `keywords`는 문자열 배열이어야 합니다.
 - `concepts`는 생략 가능하지만, 값이 있으면 문자열 배열이어야 합니다.
-- malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
 
 Rules:
 
