@@ -6,7 +6,7 @@ AI-StudyMate는 “오늘 무엇을 공부해야 할지 먼저 알려주는 AI �
 
 ## 원본 로드맵 기준
 
-원본 요구사항 문서는 `ai-studymate-roadmap.md`입니다. 현재 워크스페이스에서는 `docs/ai-studymate-roadmap.md`가 아니라 프로젝트 루트에 위치합니다.
+원본 요구사항 문서는 `docs/ai-studymate-roadmap.md`입니다.
 
 ## 필수 Phase 순서
 
@@ -69,7 +69,7 @@ P0 → P1 → P2 → P4 → P5
 - 4개 탭 UI 골격
 - Mock API Route 5개
 - 공통 타입과 Mock 데이터
-- localStorage 기반 과목/시험일/자료 저장
+- localStorage 기반 과목/시험일/자료/요약/Today plan 저장
 - 협업 문서
 
 ## 이번 범위에서 제외

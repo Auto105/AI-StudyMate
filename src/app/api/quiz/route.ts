@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { isMockApiEnabled } from '@/lib/mock/config';
 import { mockQuiz } from '@/lib/mock/quiz';
+import { readJsonBody } from '@/lib/api/request';
 import type { ApiErrorResponse, QuizRequest, QuizResponse } from '@/types/api';
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Partial<QuizRequest>;
+    const body = await readJsonBody<Partial<QuizRequest>>(request);
 
-    if (typeof body.text !== 'string' || !body.text.trim()) {
+    if (!body || typeof body.text !== 'string' || !body.text.trim()) {
       return NextResponse.json<ApiErrorResponse>(
         { error: 'text는 비어 있지 않은 문자열이어야 합니다.' },
         { status: 400 },

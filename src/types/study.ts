@@ -12,6 +12,13 @@ export interface PlanDay {
   tasks: StudyTask[];
 }
 
+export interface TodayPlan {
+  subject: string;
+  examDate: string;
+  today: StudyTask[];
+  days: PlanDay[];
+}
+
 export interface StudyProfile {
   subject: string;
   examDate: string;
