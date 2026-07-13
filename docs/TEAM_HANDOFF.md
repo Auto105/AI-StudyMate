@@ -6,6 +6,8 @@
 
 C 범위에서 API 계약 문서, validation, 날짜/계획 helper, mock/fallback 데이터를 정리했습니다.
 
+B 범위에서 환경 세팅(STEP 0)과 공통 AI 인프라(STEP 1)를 완료했습니다. API Route 실구현(STEP 2~)은 아직 진행 전입니다.
+
 검증 명령:
 
 ```bash
@@ -14,6 +16,61 @@ npm.cmd run build
 ```
 
 PowerShell에서 `npm run build`가 실행 정책 때문에 막히면 `npm.cmd run build`를 사용하세요.
+
+## B Progress Log
+
+| 항목 | 내용 |
+| --- | --- |
+| 담당 | B (근우) |
+| 브랜치 | `feature` |
+| 완료 단계 | STEP 0 (환경 세팅), STEP 1 (공통 인프라) |
+| 마지막 업데이트 | 2026-07-13 13:48 (KST) |
+
+### STEP 0 — 환경 세팅 (B)
+
+- `feature` 브랜치 최신 동기화 (`git fetch` / `git pull origin feature`)
+- `.env.local` 생성 (`USE_MOCK_API=false`, `OPENAI_API_KEY` — 로컬 전용, Git 제외)
+- `openai` 패키지 설치
+- `npx tsc --noEmit`, `npm run build`, `npm run dev` 기동 확인
+
+### STEP 1 — 공통 인프라 (B)
+
+추가된 파일:
+
+```txt
+src/lib/openai.ts    — OpenAI 클라이언트, truncateText, parseJsonWithRetry, createJsonCompletion
+src/lib/prompts.ts   — summarize/chat/plan/quiz 프롬프트 (JSON 스키마 명시)
+src/lib/fallbacks.ts — summarize·plan 데모용 fallback JSON (C plan helper 재사용)
+```
+
+수정된 파일:
+
+```txt
+package.json         — openai 의존성 추가
+package-lock.json    — lockfile 갱신
+```
+
+로컬만 존재 (Git 미추적):
+
+```txt
+.env.local           — OPENAI_API_KEY, USE_MOCK_API
+```
+
+검증 결과:
+
+- `npx tsc --noEmit` 통과
+- `npm run build` 통과
+- C 영역 파일(`src/hooks/*`, `src/types/*`, `src/lib/api/client.ts` 등) 미수정
+
+### B 다음 작업
+
+```txt
+STEP 2  POST /api/upload   — pdf-parse, { extractedText }, trim, 에러 처리
+STEP 3  POST /api/summarize
+STEP 4  POST /api/chat
+STEP 5  POST /api/plan
+STEP 6  POST /api/quiz     — bonus, 마지막
+```
 
 ## C Deliverables
 
@@ -102,6 +159,25 @@ src/app/api/plan/route.ts
 src/app/api/quiz/route.ts
 src/lib/openai.ts
 src/lib/prompts.ts
+src/lib/fallbacks.ts
+```
+
+완료 (STEP 1):
+
+```txt
+src/lib/openai.ts
+src/lib/prompts.ts
+src/lib/fallbacks.ts
+```
+
+미완료 (STEP 2~6):
+
+```txt
+src/app/api/upload/route.ts      — 실구현 대기 (현재 Mock/스텁)
+src/app/api/summarize/route.ts   — 실구현 대기
+src/app/api/chat/route.ts        — 실구현 대기
+src/app/api/plan/route.ts        — 실구현 대기
+src/app/api/quiz/route.ts        — 실구현 대기
 ```
 
 필수 요청사항:
