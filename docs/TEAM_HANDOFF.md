@@ -6,7 +6,7 @@
 
 C 범위에서 API 계약 문서, validation, 날짜/계획 helper, mock/fallback 데이터를 정리했습니다.
 
-B 범위에서 환경 세팅(STEP 0)과 공통 AI 인프라(STEP 1)를 완료했습니다. API Route 실구현(STEP 2~)은 아직 진행 전입니다.
+B 범위에서 환경 세팅(STEP 0), 공통 AI 인프라(STEP 1), PR 리뷰 반영 validation(STEP 1.5)을 완료했습니다. OpenAI Route 실구현(STEP 2~)은 아직 진행 전입니다.
 
 검증 명령:
 
@@ -23,8 +23,9 @@ PowerShell에서 `npm run build`가 실행 정책 때문에 막히면 `npm.cmd r
 | --- | --- |
 | 담당 | B (근우) |
 | 브랜치 | `feature` |
-| 완료 단계 | STEP 0 (환경 세팅), STEP 1 (공통 인프라) |
-| 마지막 업데이트 | 2026-07-13 13:48 (KST) |
+| 완료 단계 | STEP 0, STEP 1, STEP 1.5 (PR 리뷰 validation) |
+| 마지막 업데이트 | 2026-07-13 15:10 (KST) |
+| 최근 커밋 | `fix: align API validation with PR review feedback` |
 
 ### STEP 0 — 환경 세팅 (B)
 
@@ -62,15 +63,56 @@ package-lock.json    — lockfile 갱신
 - `npm run build` 통과
 - C 영역 파일(`src/hooks/*`, `src/types/*`, `src/lib/api/client.ts` 등) 미수정
 
+### STEP 1.5 — PR 리뷰 validation 반영 (B)
+
+추가된 파일:
+
+```txt
+src/lib/api/request.ts — readJsonBody(), invalidJsonBodyResponse(), INVALID_JSON_BODY_ERROR
+```
+
+수정된 파일:
+
+```txt
+src/lib/pdf.ts                  — PDF_UPLOAD_ERRORS, validatePdfFile() 통합 (빈 파일/MIME/크기/%PDF- 시그니처)
+src/app/api/upload/route.ts     — validatePdfFile() 호출로 검증 통합
+src/app/api/plan/route.ts       — readJsonBody + concepts 400 validation
+src/app/api/chat/route.ts       — readJsonBody 적용
+src/app/api/summarize/route.ts  — readJsonBody 적용
+src/app/api/quiz/route.ts       — readJsonBody 적용
+docs/API_CONTRACT.md            — 실제 Route 응답·validation 규칙 반영
+docs/DATA_LAYER.md              — PDF 시그니처 검증 설명 추가
+docs/QA_CHECKLIST.md            — malformed JSON·PDF 오류 메시지 체크 항목 추가
+src/components/materials/MaterialsPage.tsx — accept="application/pdf,.pdf"
+```
+
+반영된 validation 규칙:
+
+- malformed JSON → `400` + `{ "error": "Invalid JSON body." }`
+- malformed JSON과 필드 누락 응답 분리 (예: `{}` → subject 오류, `{` → Invalid JSON body.)
+- 빈 PDF → `400` + `{ "error": "빈 파일은 업로드할 수 없습니다." }`
+- 비PDF / 빈 MIME → `400` + `{ "error": "PDF 파일만 업로드할 수 있습니다." }`
+- 5MB 초과 → `400` + `{ "error": "PDF 파일은 5MB 이하만 업로드할 수 있습니다." }`
+- 가짜 PDF → `400` + `{ "error": "올바른 PDF 파일이 아닙니다." }`
+- `/api/plan` 잘못된 `concepts` → `400` (500 아님)
+
+검증 결과:
+
+- `npx tsc --noEmit` 통과
+- `npm run build` 통과
+- curl 기준 malformed JSON / empty PDF / fake PDF / non-PDF 테스트 통과
+
 ### B 다음 작업
 
 ```txt
-STEP 2  POST /api/upload   — pdf-parse, { extractedText }, trim, 에러 처리
-STEP 3  POST /api/summarize
-STEP 4  POST /api/chat
-STEP 5  POST /api/plan
-STEP 6  POST /api/quiz     — bonus, 마지막
+STEP 2  POST /api/upload   — pdf-parse 실구현, { text, truncated } 또는 canonical 응답 정리
+STEP 3  POST /api/summarize — OpenAI 연결
+STEP 4  POST /api/chat      — OpenAI 연결
+STEP 5  POST /api/plan      — OpenAI 연결 (시연 핵심)
+STEP 6  POST /api/quiz      — bonus, 마지막
 ```
+
+※ STEP 1.5에서 validation 골격은 완료됨. STEP 2~6은 Mock/501 → OpenAI·pdf-parse 실구현이 남음.
 
 ## C Deliverables
 
@@ -81,6 +123,7 @@ src/hooks/useLocalStorage.ts
 src/hooks/useStudyMaterials.ts
 src/hooks/useStudyProfile.ts
 src/lib/api/client.ts
+src/lib/api/request.ts
 src/lib/date.ts
 src/lib/pdf.ts
 src/lib/plan.ts
@@ -101,6 +144,8 @@ docs/QA_CHECKLIST.md
 - UI 컴포넌트에서 `localStorage`를 직접 호출하지 않습니다.
 - API 호출은 `src/lib/api/client.ts`를 사용합니다.
 - Route Handler 응답은 `docs/API_CONTRACT.md`의 현재 실제 응답 형식과 맞춥니다.
+- malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`로 통일합니다.
+- PDF 업로드 검증은 `src/lib/pdf.ts`의 `validatePdfFile()`을 `/api/upload`에서 사용합니다.
 - Quiz는 bonus 기능입니다. Today, PDF upload, Summary, Q&A, Plan보다 먼저 작업하지 않습니다.
 - 폴더 구조는 크게 바꾸지 않습니다.
 
@@ -160,6 +205,8 @@ src/app/api/quiz/route.ts
 src/lib/openai.ts
 src/lib/prompts.ts
 src/lib/fallbacks.ts
+src/lib/api/request.ts
+src/lib/pdf.ts
 ```
 
 완료 (STEP 1):
@@ -170,14 +217,26 @@ src/lib/prompts.ts
 src/lib/fallbacks.ts
 ```
 
-미완료 (STEP 2~6):
+완료 (STEP 1.5 — validation):
 
 ```txt
-src/app/api/upload/route.ts      — 실구현 대기 (현재 Mock/스텁)
-src/app/api/summarize/route.ts   — 실구현 대기
-src/app/api/chat/route.ts        — 실구현 대기
-src/app/api/plan/route.ts        — 실구현 대기
-src/app/api/quiz/route.ts        — 실구현 대기
+src/lib/api/request.ts
+src/lib/pdf.ts
+src/app/api/upload/route.ts      — validatePdfFile 연결, 빈 파일/MIME/시그니처 검증
+src/app/api/plan/route.ts        — readJsonBody, concepts 400 validation
+src/app/api/chat/route.ts        — readJsonBody
+src/app/api/summarize/route.ts   — readJsonBody
+src/app/api/quiz/route.ts        — readJsonBody
+```
+
+미완료 (STEP 2~6 — OpenAI/pdf-parse 실구현):
+
+```txt
+src/app/api/upload/route.ts      — pdf-parse 실구현 대기 (현재 Mock 응답)
+src/app/api/summarize/route.ts   — OpenAI 실구현 대기
+src/app/api/chat/route.ts        — OpenAI 실구현 대기
+src/app/api/plan/route.ts        — OpenAI 실구현 대기
+src/app/api/quiz/route.ts        — OpenAI 실구현 대기
 ```
 
 필수 요청사항:
@@ -186,9 +245,11 @@ src/app/api/quiz/route.ts        — 실구현 대기
 2. 모든 API는 JSON만 반환해야 합니다.
 3. 입력 validation과 `{ "error": "message" }` 실패 응답을 유지합니다.
 4. 잘못된 입력은 500이 아니라 400으로 처리합니다.
-5. `OPENAI_API_KEY`는 서버 코드에서만 사용합니다.
-6. `/api/plan`은 `/api/quiz`보다 먼저 완성합니다.
-7. 자료에 없는 질문은 `"자료에 없습니다."` 의미로 답합니다.
+5. malformed JSON은 `readJsonBody()` + `invalidJsonBodyResponse()`로 처리합니다.
+6. `OPENAI_API_KEY`는 서버 코드에서만 사용합니다.
+7. `/api/plan`은 `/api/quiz`보다 먼저 완성합니다.
+8. 자료에 없는 질문은 `"자료에 없습니다."` 의미로 답합니다.
+9. PDF 업로드는 `validatePdfFile()`로만 검증합니다 (Route 내부 중복 검증 금지).
 
 특히 `/api/plan` 요구사항:
 
@@ -196,6 +257,11 @@ src/app/api/quiz/route.ts        — 실구현 대기
 - `concepts`가 문자열 배열이 아니면 `400`을 반환합니다.
 - 시험일까지 남은 날짜에 따라 계획 길이와 우선순위가 달라져야 합니다.
 - D-5 시연에서는 5일 plan이 나오는 것이 좋습니다.
+
+특히 `/api/upload` 요구사항:
+
+- 빈 파일, 비PDF, 빈 MIME, 5MB 초과, `%PDF-` 시그니처 없음 → 각각 `400` + 고정 오류 메시지
+- 오류 메시지는 `src/lib/pdf.ts`의 `PDF_UPLOAD_ERRORS` 기준
 
 ## Requests for D: Integration/QA/Deployment
 
@@ -228,9 +294,11 @@ Vercel settings
 6. 자료 탭에서 PDF 업로드 또는 텍스트 붙여넣기가 가능하다.
 7. 요약하기가 동작한다.
 8. 질문 탭에서 "프로세스와 스레드 차이?"에 답한다.
-9. /api/plan에 잘못된 concepts 요청을 보내면 400이 나온다.
-10. D-5 조건에서 5일 계획이 나온다.
-11. docs/API_CONTRACT.md와 실제 응답 형식이 일치한다.
+9. /api/plan에 malformed JSON 요청을 내면 400 + "Invalid JSON body."가 나온다.
+10. /api/plan에 잘못된 concepts 요청을 내면 400이 나온다.
+11. 빈 PDF / 비PDF / 가짜 PDF 업로드 시 400이 나온다.
+12. D-5 조건에서 5일 계획이 나온다.
+13. docs/API_CONTRACT.md와 실제 응답 형식이 일치한다.
 ```
 
 ## Final Priority
