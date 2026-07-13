@@ -1,12 +1,15 @@
 node_modules/
 dist/
+.next/
+out/
+.vercel/
 .env
 .env.local
 .env.*.local
 .agents/
 .codex/
-AGENTS.md
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
 .DS_Store
+RunCodexStudySyncAI.bat
