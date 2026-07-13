@@ -1,10 +1,12 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
-import { summarizeMaterial } from '@/lib/api/client';
+import { summarizeMaterial, uploadMaterial } from '@/lib/api/client';
 import { getSummarizeFallback } from '@/lib/fallbacks';
+import { createTextPreview } from '@/lib/pdf';
 
 const KEY_CONCEPTS = [
   {
@@ -35,9 +37,43 @@ const CHECKLIST_ITEMS = [
 
 export function MaterialsPage() {
   const { material, setMaterial } = useStudyMaterials();
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
+
+  async function handlePdfUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    setSelectedFileName(file.name);
+    setIsUploading(true);
+    setError(null);
+    setShowFallback(false);
+
+    try {
+      const upload = await uploadMaterial(formData);
+      setMaterial({
+        ...material,
+        text: upload.text,
+        preview: createTextPreview(upload.text, 280),
+        summary: undefined,
+      });
+      setError(upload.truncated ? 'PDF text was truncated to 12,000 characters.' : null);
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : 'PDF upload failed.';
+      setError(message);
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  }
 
   async function handleSummary() {
     const text = material.text.trim();
@@ -74,7 +110,13 @@ export function MaterialsPage() {
 
           <section className="mb-12 grid grid-cols-1 gap-6 xl:grid-cols-2">
             <label className="group relative flex h-72 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-[#c3c6d7] bg-white p-8 text-center transition hover:border-[#004ac6]/50">
-              <input type="file" accept="application/pdf,.pdf" className="sr-only" />
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                className="sr-only"
+                onChange={(event) => void handlePdfUpload(event)}
+                disabled={isUploading}
+              />
               <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#0053db] opacity-50" />
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#dbe1ff] text-[#00174b] transition duration-300 group-hover:scale-110">
                 <span className="material-symbols-outlined text-4xl">cloud_upload</span>
@@ -85,6 +127,11 @@ export function MaterialsPage() {
                 <span className="material-symbols-outlined text-[18px]">folder_open</span>
                 파일 선택
               </span>
+              {selectedFileName ? (
+                <p className="mt-3 max-w-full truncate text-xs font-semibold text-[#434655]">
+                  {selectedFileName}
+                </p>
+              ) : null}
             </label>
 
             <section className="relative flex h-72 flex-col rounded-xl border border-[#c3c6d7] bg-white p-6">

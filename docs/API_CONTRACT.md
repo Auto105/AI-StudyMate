@@ -2,7 +2,7 @@
 
 AI StudyMate API는 Next.js Route Handler로 구현하며 모든 응답은 JSON입니다.
 
-현재 PR에서는 실제 Route가 반환하는 형식을 기준으로 문서화합니다. OpenAI와 PDF parser 연결 전까지는 Mock 응답을 유지합니다.
+현재 PR에서는 실제 Route가 반환하는 형식을 기준으로 문서화합니다. PDF 업로드는 서버에서 텍스트를 추출하고, OpenAI 기반 summarize/chat/plan/quiz는 Mock 응답을 유지할 수 있습니다.
 
 ## Common Rules
 
@@ -40,6 +40,8 @@ Response: `UploadResponse`
   "truncated": false
 }
 ```
+
+PDF 파일 업로드 시 `pdf-parse`로 추출한 텍스트를 반환합니다. 추출 텍스트는 최대 12,000자까지 반환하며 초과분이 있으면 `truncated: true`를 반환합니다.
 
 Validation:
 

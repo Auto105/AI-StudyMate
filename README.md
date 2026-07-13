@@ -23,7 +23,7 @@ P0 → P1 → P2 → P4 → P5
 | Phase | 목표 | 상태 |
 | --- | --- | --- |
 | P0 | 범위·기반 고정, IA/API 이름 확정 | 기본 구조 반영 |
-| P1 | PDF 수집, 텍스트 추출 진입점 | Mock Route와 UI 골격 |
+| P1 | PDF 수집, 텍스트 추출 진입점 | 실제 업로드 Route와 UI 연결 |
 | P2 | 요약 + 자료 근거 Q&A | Mock Route와 fallback |
 | P3 | Quiz 보너스 | 별도 탭의 최소 골격 |
 | P4 | Today/다음 행동/plan | 기본 진입 화면과 D-5/D-2 Mock |
@@ -36,7 +36,7 @@ P0 → P1 → P2 → P4 → P5
 - Tailwind CSS
 - Route Handlers
 - OpenAI API 연결 예정
-- pdf-parse 연결 예정
+- pdf-parse
 - localStorage
 - Vercel 배포 기준
 - npm
@@ -111,7 +111,7 @@ src/
 
 - PDF 파일: 5MB 이하
 - 추출 텍스트: 최대 12,000자
-- 현재 실제 PDF 파싱은 구현하지 않았고 Mock 업로드 응답과 제한 검증만 둡니다.
+- PDF 업로드 시 서버에서 텍스트를 추출하고, 12,000자까지 학습 자료에 반영합니다.
 
 ## 브랜치 전략
 
@@ -133,7 +133,7 @@ src/
 
 ## 향후 구현할 기능
 
-- 실제 PDF 텍스트 추출
+- 스캔 PDF/OCR 처리
 - OpenAI 요약/질문/계획/퀴즈 생성 연결
 - cache fallback 구현
 - Vercel 환경변수 설정과 배포

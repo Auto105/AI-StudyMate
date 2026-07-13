@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { validatePdfFile } from '@/lib/pdf';
+import { extractTextFromPdfFile } from '@/lib/server/pdf';
 import type { ApiErrorResponse, UploadResponse } from '@/types/api';
 
 const MAX_TEXT_LENGTH = 12_000;
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
@@ -26,20 +29,21 @@ export async function POST(request: Request) {
         return NextResponse.json<ApiErrorResponse>({ error: validation.error }, { status: 400 });
       }
 
+      const text = await extractTextFromPdfFile(fileValue);
+
       return NextResponse.json<UploadResponse>({
-        text: 'PDF 텍스트 추출은 아직 구현되지 않았습니다. 현재는 Mock 업로드 응답입니다.',
-        truncated: false,
+        text: text.slice(0, MAX_TEXT_LENGTH),
+        truncated: text.length > MAX_TEXT_LENGTH,
       });
     }
 
     return NextResponse.json<ApiErrorResponse>(
-      { error: 'text 또는 file 필드가 필요합니다.' },
+      { error: 'text or file field is required.' },
       { status: 400 },
     );
-  } catch {
-    return NextResponse.json<ApiErrorResponse>(
-      { error: '업로드 요청을 처리하지 못했습니다.' },
-      { status: 500 },
-    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to process upload request.';
+
+    return NextResponse.json<ApiErrorResponse>({ error: message }, { status: 500 });
   }
 }
