@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react';
 
-export function useLocalStorage<T>(key: string, initialValue: T) {
+interface UseLocalStorageOptions<T> {
+  getInitialValue?: () => T;
+}
+
+export function useLocalStorage<T>(key: string, initialValue: T, options: UseLocalStorageOptions<T> = {}) {
   const [value, setValue] = useState<T>(initialValue);
   const [isReady, setIsReady] = useState(false);
 
@@ -10,15 +14,13 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     try {
       const storedValue = window.localStorage.getItem(key);
 
-      if (storedValue) {
-        setValue(JSON.parse(storedValue) as T);
-      }
+      setValue(storedValue ? (JSON.parse(storedValue) as T) : (options.getInitialValue?.() ?? initialValue));
     } catch {
-      setValue(initialValue);
+      setValue(options.getInitialValue?.() ?? initialValue);
     } finally {
       setIsReady(true);
     }
-  }, [initialValue, key]);
+  }, [initialValue, key, options.getInitialValue]);
 
   useEffect(() => {
     if (!isReady) {

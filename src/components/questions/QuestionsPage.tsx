@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
+import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { askQuestion } from '@/lib/api/client';
 import { getMockChatResponse } from '@/lib/mock/chat';
@@ -20,11 +21,12 @@ const MATERIAL_GREETING: ChatMessage = {
 
 export function QuestionsPage() {
   const { material, isReady } = useStudyMaterials();
+  const { appendChatMessages, data } = useStudyData();
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
   const hasMaterial = material.text.trim().length > 0;
+  const messages = data.chatHistory;
   const visibleMessages = isReady && hasMaterial && messages.length === 0 ? [MATERIAL_GREETING] : messages;
 
   async function handleSubmit() {
@@ -40,10 +42,7 @@ export function QuestionsPage() {
       content: trimmedQuestion,
     };
 
-    setMessages((current) => [
-      ...(current.length === 0 ? [MATERIAL_GREETING] : current),
-      userMessage,
-    ]);
+    appendChatMessages(...(messages.length === 0 ? [MATERIAL_GREETING, userMessage] : [userMessage]));
     setQuestion('');
     setIsSending(true);
     setShowFallback(false);
@@ -54,27 +53,21 @@ export function QuestionsPage() {
         question: trimmedQuestion,
       });
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response.answer,
-          grounded: response.grounded,
-        },
-      ]);
+      appendChatMessages({
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: response.answer,
+        grounded: response.grounded,
+      });
     } catch {
       const fallback = getMockChatResponse(material.text, trimmedQuestion);
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-fallback-${Date.now()}`,
-          role: 'assistant',
-          content: fallback.answer,
-          grounded: fallback.grounded,
-        },
-      ]);
+      appendChatMessages({
+        id: `assistant-fallback-${Date.now()}`,
+        role: 'assistant',
+        content: fallback.answer,
+        grounded: fallback.grounded,
+      });
       setShowFallback(true);
     } finally {
       setIsSending(false);
