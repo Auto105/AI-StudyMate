@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { SetStateAction } from 'react';
+
+const LOCAL_STORAGE_CHANGE_EVENT = 'ai-studymate-local-storage-change';
+
+interface LocalStorageChangeDetail<T> {
+  key: string;
+  value: T;
+}
 
 interface UseLocalStorageOptions<T> {
   getInitialValue?: () => T;
@@ -23,12 +31,58 @@ export function useLocalStorage<T>(key: string, initialValue: T, options: UseLoc
   }, [initialValue, key, options.getInitialValue]);
 
   useEffect(() => {
+    function handleStorageChange(event: StorageEvent) {
+      if (event.key !== key) {
+        return;
+      }
+
+      try {
+        setValue(event.newValue ? (JSON.parse(event.newValue) as T) : initialValue);
+      } catch {
+        setValue(initialValue);
+      }
+    }
+
+    function handleLocalStorageChange(event: Event) {
+      const customEvent = event as CustomEvent<LocalStorageChangeDetail<T>>;
+
+      if (customEvent.detail.key !== key) {
+        return;
+      }
+
+      setValue(customEvent.detail.value);
+    }
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener(LOCAL_STORAGE_CHANGE_EVENT, handleLocalStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener(LOCAL_STORAGE_CHANGE_EVENT, handleLocalStorageChange);
+    };
+  }, [initialValue, key]);
+
+  useEffect(() => {
     if (!isReady) {
       return;
     }
 
     window.localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(
+      new CustomEvent<LocalStorageChangeDetail<T>>(LOCAL_STORAGE_CHANGE_EVENT, {
+        detail: { key, value },
+      }),
+    );
   }, [isReady, key, value]);
 
-  return [value, setValue, isReady] as const;
+  const setStoredValue = useCallback(
+    (nextValue: SetStateAction<T>) => {
+      setValue((currentValue) => {
+        return typeof nextValue === 'function' ? (nextValue as (currentValue: T) => T)(currentValue) : nextValue;
+      });
+    },
+    [],
+  );
+
+  return [value, setStoredValue, isReady] as const;
 }

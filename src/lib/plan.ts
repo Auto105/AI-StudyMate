@@ -21,12 +21,15 @@ export function createPlanInput(
   subject: string,
   examDate: string,
   summary?: SummaryResult | null,
+  materialText = '',
 ): PlanInput {
+  const textSummary = summary ?? createTextSummary(materialText);
+
   return normalizePlanInput({
     subject,
     examDate,
-    keywords: summary?.keywords ?? [],
-    concepts: summary?.concepts ?? [],
+    keywords: textSummary?.keywords ?? [],
+    concepts: textSummary?.concepts ?? [],
   });
 }
 
@@ -194,4 +197,66 @@ function createFallbackPlan(
 
 function normalizeStringList(values: string[]) {
   return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function createTextSummary(text: string): SummaryResult | null {
+  const normalizedText = text.replace(/\s+/g, ' ').trim();
+
+  if (!normalizedText) {
+    return null;
+  }
+
+  return {
+    keywords: extractKeywords(normalizedText),
+    concepts: extractConcepts(normalizedText),
+    easyExplain: '',
+  };
+}
+
+function extractKeywords(text: string) {
+  const stopWords = new Set([
+    '그리고',
+    '그러나',
+    '또한',
+    '때문에',
+    '위해서',
+    '통해서',
+    '합니다',
+    '있습니다',
+    '됩니다',
+    '이다',
+    '한다',
+    '있는',
+    '없는',
+    'the',
+    'and',
+    'for',
+    'with',
+    'that',
+    'this',
+  ]);
+
+  const counts = new Map<string, number>();
+  const words = text
+    .split(/[^0-9A-Za-z가-힣]+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 2 && !stopWords.has(word.toLowerCase()));
+
+  words.forEach((word) => {
+    counts.set(word, (counts.get(word) ?? 0) + 1);
+  });
+
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || right[0].length - left[0].length)
+    .slice(0, 5)
+    .map(([word]) => word);
+}
+
+function extractConcepts(text: string) {
+  const sentences = text
+    .split(/[.!?。！？\n]+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 12);
+
+  return sentences.slice(0, 3);
 }
