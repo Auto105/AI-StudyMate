@@ -12,8 +12,10 @@
 
 ### `USE_MOCK_API=false`
 
-- `POST /api/chat` and `POST /api/summarize` call OpenAI and require `OPENAI_API_KEY`.
-- `POST /api/plan` and `POST /api/quiz` currently return `501` with `{ "error": "..." }`.
+- `POST /api/chat`, `POST /api/summarize`, and `POST /api/plan` call OpenAI and require `OPENAI_API_KEY`.
+- `POST /api/plan` returns `PlanResponse` where every task has `{ id, title }`.
+- OpenAI plan 실패 시 D-day fallback JSON을 `{ id, title }` 형식으로 변환해 반환합니다.
+- `POST /api/quiz` currently returns `501` with `{ "error": "..." }`.
 - `POST /api/upload` continues to accept pasted text or a validated PDF and returns `{ text, truncated }`.
 
 AI StudyMate API는 Next.js Route Handler로 구현하며 모든 응답은 JSON입니다.
@@ -211,6 +213,8 @@ Rules:
 - D-day에 따라 계획 길이가 달라집니다.
 - D-5 demo는 5일 계획을 반환합니다.
 - Summary `keywords`와 `concepts`는 task 내용에 반영됩니다.
+- `today`와 `days[].tasks`의 모든 task는 `{ "id": string, "title": string }` 형식이어야 합니다.
+- 문자열만 있는 task는 허용되지 않습니다.
 - Quiz는 이 endpoint를 막지 않습니다.
 
 Frontend client:
