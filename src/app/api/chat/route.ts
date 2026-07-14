@@ -3,7 +3,7 @@ import { invalidJsonBodyResponse, readJsonBody } from '@/lib/api/request';
 import { getMockChatResponse } from '@/lib/mock/chat';
 import { isMockApiEnabled } from '@/lib/mock/config';
 import { createJsonCompletion, truncateText } from '@/lib/openai';
-import { chatPrompt } from '@/lib/prompts';
+import { OUT_OF_MATERIAL_ANSWER, chatPrompt } from '@/lib/prompts';
 import type { ApiErrorResponse, ChatRequest, ChatResponse } from '@/types/api';
 
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     if (!body.text.trim()) {
       return NextResponse.json<ChatResponse>({
-        answer: '자료에 없습니다. 먼저 학습자료를 추가하세요.',
+        answer: OUT_OF_MATERIAL_ANSWER,
         grounded: false,
       });
     }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       parse: parseChatResponse,
     });
 
-    return NextResponse.json<ChatResponse>(response);
+    return NextResponse.json<ChatResponse>(normalizeChatResponse(response));
   } catch (error) {
     const message = error instanceof Error ? error.message : '질문 요청을 처리하지 못했습니다.';
 
@@ -60,8 +60,23 @@ function parseChatResponse(raw: string): ChatResponse {
     throw new Error('OpenAI 응답 형식이 올바르지 않습니다.');
   }
 
-  return {
-    answer: parsed.answer,
+  return normalizeChatResponse({
+    answer: parsed.answer.trim(),
     grounded: parsed.grounded,
+  });
+}
+
+/** 자료 밖 답변 문구를 계약 문구("자료에 없습니다.")로 통일한다. */
+function normalizeChatResponse(response: ChatResponse): ChatResponse {
+  if (!response.grounded) {
+    return {
+      answer: OUT_OF_MATERIAL_ANSWER,
+      grounded: false,
+    };
+  }
+
+  return {
+    answer: response.answer,
+    grounded: true,
   };
 }

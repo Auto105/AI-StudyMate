@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { invalidJsonBodyResponse, readJsonBody } from '@/lib/api/request';
-import { calculateDday, isValidIsoDate } from '@/lib/date';
+import { calculateDday, getTodayIso, isValidIsoDate } from '@/lib/date';
 import { getPlanFallback } from '@/lib/fallbacks';
 import { isMockApiEnabled } from '@/lib/mock/config';
 import { getMockPlan } from '@/lib/mock/plan';
 import { createJsonCompletion } from '@/lib/openai';
-import { toLegacyPlanDays, toLegacyStudyTasks } from '@/lib/plan';
+import { getPlanLengthByDday, toLegacyPlanDays, toLegacyStudyTasks } from '@/lib/plan';
 import { planPrompt } from '@/lib/prompts';
 import type { ApiErrorResponse, PlanRequest, PlanResponse } from '@/types/api';
 import type { PlanDay, StudyPlan, StudyTask } from '@/types/study';
@@ -69,11 +69,13 @@ export async function POST(request: Request) {
     }
 
     try {
-      const prompt = planPrompt(subject, examDate, keywords, concepts, calculateDday(examDate));
+      const today = getTodayIso();
+      const dday = calculateDday(examDate, today);
+      const prompt = planPrompt(subject, examDate, keywords, concepts, dday, today);
       const plan = await createJsonCompletion<PlanResponse>({
         system: prompt.system,
         user: prompt.user,
-        parse: parsePlanResponse,
+        parse: (raw) => parsePlanResponse(raw, getPlanLengthByDday(examDate, today)),
       });
 
       return NextResponse.json<PlanResponse>(normalizePlanResponse(plan));
@@ -96,33 +98,46 @@ function studyPlanToResponse(plan: StudyPlan): PlanResponse {
   };
 }
 
-function parsePlanResponse(raw: string): PlanResponse {
+function parsePlanResponse(raw: string, expectedDays?: number): PlanResponse {
   const parsed = JSON.parse(raw) as Partial<PlanResponse> & {
     today?: unknown;
     days?: unknown;
   };
 
-  return normalizePlanResponse(parsed);
+  return normalizePlanResponse(parsed, expectedDays);
 }
 
-function normalizePlanResponse(value: {
-  today?: unknown;
-  days?: unknown;
-}): PlanResponse {
+function normalizePlanResponse(
+  value: {
+    today?: unknown;
+    days?: unknown;
+  },
+  expectedDays?: number,
+): PlanResponse {
   if (!Array.isArray(value.today) || !Array.isArray(value.days)) {
     throw new Error('OpenAI 응답 형식이 올바르지 않습니다.');
   }
 
-  const today = value.today.map((task, index) => normalizeStudyTask(task, `today-task-${index + 1}`));
+  const today = value.today
+    .map((task, index) => normalizeStudyTask(task, `today-task-${index + 1}`))
+    .slice(0, 3);
 
   if (today.length === 0) {
     throw new Error('today에는 1개 이상의 task가 필요합니다.');
   }
 
-  const days: PlanDay[] = value.days.map((day, dayIndex) => normalizePlanDay(day, dayIndex));
+  let days: PlanDay[] = value.days.map((day, dayIndex) => normalizePlanDay(day, dayIndex));
 
   if (days.length === 0) {
     throw new Error('days에는 1개 이상의 날짜가 필요합니다.');
+  }
+
+  if (expectedDays !== undefined && days.length > expectedDays) {
+    days = days.slice(0, expectedDays);
+  }
+
+  if (expectedDays !== undefined && days.length !== expectedDays) {
+    throw new Error(`days 길이는 ${expectedDays}개여야 합니다.`);
   }
 
   return { today, days };

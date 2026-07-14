@@ -4,9 +4,11 @@ import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
+import { useStudyProfile } from '@/hooks/useStudyProfile';
 import { summarizeMaterial, uploadMaterial } from '@/lib/api/client';
-import { getSummarizeFallback } from '@/lib/fallbacks';
+import { formatDday } from '@/lib/date';
 import { createTextPreview } from '@/lib/pdf';
+import type { StudySummary } from '@/types/study';
 
 export function MaterialsPage() {
   const { material, setMaterial } = useStudyMaterials();
@@ -15,6 +17,7 @@ export function MaterialsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
   const summaryTitle = summary?.keywords.length ? `${summary.keywords[0]} 자료 기반` : 'AI 요약';
 
@@ -66,11 +69,27 @@ export function MaterialsPage() {
       const summary = await summarizeMaterial({ text });
       setMaterial({ ...material, summary });
     } catch {
-      setMaterial({ ...material, summary: getSummarizeFallback(text) });
-      setError('API 요청에 실패해 데모 요약을 불러왔습니다.');
+      setError('요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.');
       setShowFallback(true);
     } finally {
       setIsSummarizing(false);
+    }
+  }
+
+  async function handleCopySummary() {
+    if (!summary) {
+      setCopyMessage('복사할 요약이 없습니다.');
+      window.setTimeout(() => setCopyMessage(null), 1800);
+      return;
+    }
+
+    try {
+      await copyText(formatSummaryForCopy(summary));
+      setCopyMessage('복사되었습니다.');
+    } catch {
+      setCopyMessage('복사에 실패했습니다.');
+    } finally {
+      window.setTimeout(() => setCopyMessage(null), 1800);
     }
   }
 
@@ -113,7 +132,7 @@ export function MaterialsPage() {
               <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-[#00687a] opacity-50" />
               <div className="mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#434655]">edit_note</span>
-                <h3 className="text-xl font-semibold leading-snug text-[#191b23]">텍스트 직접 입력</h3>
+                <h3 className="text-xl font-semibold leading-snug text-[#191b23]">텍스트 입력</h3>
               </div>
               <textarea
                 value={material.text}
@@ -122,10 +141,11 @@ export function MaterialsPage() {
                     ...material,
                     text: event.target.value,
                     preview: event.target.value.slice(0, 280),
+                    summary: undefined,
                   })
                 }
                 className="min-h-0 flex-1 resize-none rounded-lg border border-[#c3c6d7] bg-[#f3f3fe] p-4 text-base leading-6 text-[#191b23] outline-none transition placeholder:text-[#9ca3af] focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
-                placeholder="강의 노트나 학습 내용을 직접 붙여넣어 주세요."
+                placeholder={`강의 노트와 학습내용을 붙여넣으세요.\nTIP: PDF가 있다면 PDF를 우선적으로 선택해주세요.`}
               />
               <div className="mt-3 flex items-center justify-between gap-3">
                 <button
@@ -156,7 +176,11 @@ export function MaterialsPage() {
                 <p className="text-lg leading-7 text-[#434655]">등록한 학습 자료에서 핵심 내용만 정리했어요.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className="flex items-center gap-2 rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-[#191b23] shadow-sm transition hover:bg-[#f3f3fe]">
+                <button
+                  type="button"
+                  onClick={() => void handleCopySummary()}
+                  className="flex items-center gap-2 rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-[#191b23] shadow-sm transition hover:bg-[#f3f3fe]"
+                >
                   <span className="material-symbols-outlined text-[20px]">content_copy</span>
                   <span className="text-sm font-medium">복사하기</span>
                 </button>
@@ -228,26 +252,83 @@ export function MaterialsPage() {
       </div>
 
       <ApiFallbackOverlay isVisible={showFallback} onRetry={() => setShowFallback(false)} />
+      {copyMessage ? (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#191b23] px-5 py-3 text-sm font-medium text-white shadow-lg"
+        >
+          {copyMessage}
+        </div>
+      ) : null}
     </div>
   );
 }
 
+function formatSummaryForCopy(summary: StudySummary) {
+  return [
+    '[핵심 개념]',
+    ...summary.concepts.map((concept, index) => `${index + 1}. ${concept}`),
+    '',
+    '[핵심 키워드]',
+    summary.keywords.join(', '),
+    '',
+    '[쉽게 이해하기]',
+    summary.easyExplain,
+  ].join('\n');
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+}
+
 function MaterialsRightPanel() {
+  const { profile } = useStudyProfile();
+  const subject = profile.subject.trim() || '과목 미설정';
+  const { material } = useStudyMaterials();
+  const hasMaterial = material.text.trim().length > 0;
+  const hasSummary = Boolean(material.summary);
+  const hasExam = profile.subject.trim().length > 0 && profile.examDate.trim().length > 0;
+
   return (
-    <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-l border-[#c3c6d7] bg-white px-6 py-6 xl:flex">
+    <aside className="hidden h-screen w-[320px] shrink-0 flex-col overflow-y-auto border-l border-[#c3c6d7] bg-white px-6 py-8 xl:fixed xl:right-0 xl:top-0 xl:flex">
       <section className="mb-8">
         <h3 className="mb-4 text-xl font-semibold leading-snug text-[#191b23]">Storage Status</h3>
         <div className="rounded-xl bg-[#ededf9] p-4">
-          <div className="mb-2 flex items-end justify-between">
-            <span className="text-xs font-semibold text-[#434655]">Used Space</span>
-            <span className="text-xl font-semibold text-[#191b23]">
-              1.2 <span className="text-sm font-normal text-[#434655]">GB</span>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-[#434655]">Current Data</span>
+            <span className="rounded-full bg-[#00687a]/10 px-2.5 py-1 text-xs font-semibold text-[#00687a]">
+              로컬 저장됨
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[#c3c6d7]/30">
-            <div className="h-full w-[24%] rounded-full bg-[#004ac6]" />
+          <div className="space-y-3 text-sm leading-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#434655]">학습 자료</span>
+              <span className="font-semibold text-[#191b23]">
+                {hasMaterial ? `${material.text.length.toLocaleString()}자` : '없음'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#434655]">AI 요약</span>
+              <span className="font-semibold text-[#191b23]">{hasSummary ? '저장됨' : '미생성'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#434655]">시험 정보</span>
+              <span className="font-semibold text-[#191b23]">{hasExam ? '저장됨' : '미설정'}</span>
+            </div>
           </div>
-          <p className="mt-2 text-right text-xs font-semibold text-[#434655]">5 GB Total</p>
         </div>
       </section>
 
@@ -256,11 +337,11 @@ function MaterialsRightPanel() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3 rounded-lg border border-[#c3c6d7] bg-white p-3">
             <div className="flex h-10 w-10 items-center justify-center rounded bg-[#f59e0b]/10 text-[#f59e0b]">
-              <span className="text-[10px] font-semibold">D-2</span>
+              <span className="text-[10px] font-semibold">{formatDday(profile.examDate)}</span>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-[#191b23]">운영체제 중간고사</h4>
-              <p className="text-[12px] leading-5 text-[#434655]">Need to summarize Week 5</p>
+              <h4 className="text-sm font-medium text-[#191b23]">{subject} 시험</h4>
+              <p className="text-[12px] leading-5 text-[#434655]">자료 요약과 핵심 개념을 확인하세요.</p>
             </div>
           </div>
         </div>
