@@ -12,8 +12,8 @@
 
 ### `USE_MOCK_API=false`
 
-- `POST /api/chat` calls OpenAI and requires `OPENAI_API_KEY`.
-- `POST /api/summarize`, `POST /api/plan`, and `POST /api/quiz` currently return `501` with `{ "error": "..." }`.
+- `POST /api/chat` and `POST /api/summarize` call OpenAI and require `OPENAI_API_KEY`.
+- `POST /api/plan` and `POST /api/quiz` currently return `501` with `{ "error": "..." }`.
 - `POST /api/upload` continues to accept pasted text or a validated PDF and returns `{ text, truncated }`.
 
 AI StudyMate API는 Next.js Route Handler로 구현하며 모든 응답은 JSON입니다.
