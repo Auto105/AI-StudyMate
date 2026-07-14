@@ -1,3 +1,5 @@
+import { getPlanLengthByDday } from '@/lib/plan';
+
 const OUT_OF_MATERIAL_ANSWER = '자료에 없습니다.';
 
 export function summarizePrompt(text: string) {
@@ -43,18 +45,24 @@ export function planPrompt(
   keywords: string[],
   concepts: string[],
   dday: number | null,
+  today = new Date().toISOString().slice(0, 10),
 ) {
-  const ddayLabel = dday === null ? '시험일 미정' : `D-${dday}`;
-  const planDays = dday === null ? 3 : Math.min(Math.max(dday, 1), 7);
+  const ddayLabel =
+    dday === null ? '시험일 미정' : dday === 0 ? 'D-Day' : dday > 0 ? `D-${dday}` : `D+${Math.abs(dday)}`;
+  const planDays = getPlanLengthByDday(examDate, today);
 
   return {
     system: [
       '당신은 시험 대비 학습 계획을 세우는 도우미입니다.',
-      '시험일까지 남은 일수(D-day)에 따라 계획 길이와 우선순위를 조정하세요.',
-      `현재 ${ddayLabel}이며 days 배열 길이는 ${planDays}일이어야 합니다.`,
-      'D-day가 짧을수록 점검, 최종 암기, 약점 확인 위주로 today와 tasks를 구성하세요.',
-      'keywords와 concepts가 있으면 today와 days.tasks에 반영하세요.',
-      'today는 오늘 할 일 2~3개입니다.',
+      '시험일까지 남은 일수(D-day)에 따라 계획 길이와 우선순위를 반드시 바꾸세요.',
+      `현재 ${ddayLabel}이며 days 배열 길이는 정확히 ${planDays}개여야 합니다.`,
+      'D-5 부근: 자료 훑기 → 개념 정리 → 비교 → 질문 → 압축 복습처럼 단계적으로 구성하세요.',
+      'D-2~D-3: 비교 복습, 약점 확인, 최종 암기 중심으로 today와 tasks를 더 압축하세요.',
+      'D-1~D-Day: 핵심 확인과 헷갈리는 개념 점검만 남기세요.',
+      'keywords와 concepts가 있으면 today와 days.tasks 문구에 직접 반영하세요.',
+      'today는 오늘 할 일 2~3개입니다. days[0].tasks와 today는 같은 내용이어야 합니다.',
+      'days[i].date는 오늘부터 하루씩 증가하고, 마지막 날 date는 시험일과 같아야 합니다.',
+      'days.label은 "자료 훑기", "비교 복습", "최종 점검"처럼 학습 주제여야 하며 "D-5" 같은 D-day 표기는 쓰지 마세요.',
       '반드시 JSON 객체만 반환하세요.',
       '스키마:',
       '{',
@@ -77,8 +85,10 @@ export function planPrompt(
     ].join('\n'),
     user: [
       `과목: ${subject}`,
+      `오늘 날짜: ${today}`,
       `시험일: ${examDate}`,
       `D-day: ${ddayLabel}`,
+      `계획 일수: ${planDays}`,
       `keywords: ${keywords.join(', ') || '(없음)'}`,
       `concepts: ${concepts.join(' | ') || '(없음)'}`,
     ].join('\n'),
