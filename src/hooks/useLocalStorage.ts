@@ -68,25 +68,20 @@ export function useLocalStorage<T>(key: string, initialValue: T, options: UseLoc
     }
 
     window.localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(
+      new CustomEvent<LocalStorageChangeDetail<T>>(LOCAL_STORAGE_CHANGE_EVENT, {
+        detail: { key, value },
+      }),
+    );
   }, [isReady, key, value]);
 
   const setStoredValue = useCallback(
     (nextValue: SetStateAction<T>) => {
       setValue((currentValue) => {
-        const resolvedValue =
-          typeof nextValue === 'function' ? (nextValue as (currentValue: T) => T)(currentValue) : nextValue;
-
-        window.localStorage.setItem(key, JSON.stringify(resolvedValue));
-        window.dispatchEvent(
-          new CustomEvent<LocalStorageChangeDetail<T>>(LOCAL_STORAGE_CHANGE_EVENT, {
-            detail: { key, value: resolvedValue },
-          }),
-        );
-
-        return resolvedValue;
+        return typeof nextValue === 'function' ? (nextValue as (currentValue: T) => T)(currentValue) : nextValue;
       });
     },
-    [key],
+    [],
   );
 
   return [value, setStoredValue, isReady] as const;

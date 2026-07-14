@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
 import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
@@ -25,6 +25,8 @@ export function QuestionsPage() {
   const [question, setQuestion] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const conversationEndRef = useRef<HTMLDivElement | null>(null);
+  const isSubmittingRef = useRef(false);
   const hasMaterial = material.text.trim().length > 0;
   const messages = data.chatHistory;
   const visibleMessages = isReady && hasMaterial && messages.length === 0 ? [MATERIAL_GREETING] : messages;
@@ -34,13 +36,18 @@ export function QuestionsPage() {
     setShowFallback(false);
   }, [material.text]);
 
+  useEffect(() => {
+    conversationEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [visibleMessages.length, isSending]);
+
   async function handleSubmit() {
     const trimmedQuestion = question.trim();
 
-    if (!trimmedQuestion || !hasMaterial) {
+    if (!trimmedQuestion || !hasMaterial || isSubmittingRef.current) {
       return;
     }
 
+    isSubmittingRef.current = true;
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -75,6 +82,7 @@ export function QuestionsPage() {
       });
       setShowFallback(true);
     } finally {
+      isSubmittingRef.current = false;
       setIsSending(false);
     }
   }
@@ -104,6 +112,7 @@ export function QuestionsPage() {
             )}
 
             {isSending ? <AssistantMessage content="자료 안에서 답을 찾고 있어요..." grounded /> : null}
+            <div ref={conversationEndRef} />
           </div>
 
           <div className="border-t border-[#c3c6d7]/30 bg-white p-4">
