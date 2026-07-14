@@ -8,40 +8,15 @@ import { summarizeMaterial, uploadMaterial } from '@/lib/api/client';
 import { getSummarizeFallback } from '@/lib/fallbacks';
 import { createTextPreview } from '@/lib/pdf';
 
-const KEY_CONCEPTS = [
-  {
-    title: '프로세스 (Process)',
-    description: '실행 중인 프로그램을 의미하며, 운영체제로부터 자원을 할당받는 작업의 단위.',
-  },
-  {
-    title: '스레드 (Thread)',
-    description: '프로세스 내에서 실행되는 흐름의 단위로, 프로세스의 자원을 공유함.',
-  },
-  {
-    title: '문맥 교환 (Context Switching)',
-    description: '하나의 프로세스/스레드에서 다른 프로세스/스레드로 CPU 제어권이 넘어가는 과정.',
-  },
-];
-
-const REMEMBER_ITEMS = [
-  '멀티프로세스와 멀티스레드의 근본적인 차이는 자원 공유 여부에 있다.',
-  '문맥 교환 시 발생하는 오버헤드는 시스템 성능에 직접적인 영향을 미친다.',
-  'PCB(Process Control Block)에는 프로세스 상태, 프로그램 카운터, 레지스터 정보 등이 저장된다.',
-];
-
-const CHECKLIST_ITEMS = [
-  '프로세스 상태 전이도(New, Ready, Running, Waiting, Terminated) 그리기',
-  'PCB에 포함되는 주요 정보 3가지 이상 암기',
-  '멀티스레딩의 장단점 서술 준비',
-];
-
 export function MaterialsPage() {
   const { material, setMaterial } = useStudyMaterials();
+  const summary = material.summary;
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
+  const summaryTitle = summary?.keywords.length ? `${summary.keywords[0]} 자료 기반` : 'AI 요약';
 
   async function handlePdfUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -91,7 +66,7 @@ export function MaterialsPage() {
       const summary = await summarizeMaterial({ text });
       setMaterial({ ...material, summary });
     } catch {
-      setMaterial({ ...material, summary: getSummarizeFallback() });
+      setMaterial({ ...material, summary: getSummarizeFallback(text) });
       setError('API 요청에 실패해 데모 요약을 불러왔습니다.');
       setShowFallback(true);
     } finally {
@@ -175,7 +150,7 @@ export function MaterialsPage() {
               <div>
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#dbe1ff] px-3 py-1">
                   <span className="material-symbols-outlined text-sm text-[#004ac6]">auto_awesome</span>
-                  <span className="text-xs font-semibold text-[#004ac6]">운영체제 5주차 강의자료.pdf 기반</span>
+                  <span className="text-xs font-semibold text-[#004ac6]">{summaryTitle}</span>
                 </div>
                 <h2 className="mb-2 text-5xl font-bold leading-tight text-[#191b23]">AI 요약</h2>
                 <p className="text-lg leading-7 text-[#434655]">등록한 학습 자료에서 핵심 내용만 정리했어요.</p>
@@ -205,12 +180,16 @@ export function MaterialsPage() {
                   <h2 className="text-xl font-semibold leading-snug text-[#191b23]">핵심 개념</h2>
                 </div>
                 <div className="space-y-4 text-base leading-6 text-[#434655]">
-                  {KEY_CONCEPTS.map((concept) => (
-                    <div key={concept.title}>
-                      <strong className="mb-1 block text-[#191b23]">{concept.title}</strong>
-                      <p>{concept.description}</p>
-                    </div>
-                  ))}
+                  {summary?.concepts.length ? (
+                    summary.concepts.map((concept, index) => (
+                      <div key={`${index}-${concept}`}>
+                        <strong className="mb-1 block text-[#191b23]">핵심 개념 {index + 1}</strong>
+                        <p>{concept}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p>요약을 생성하면 핵심 개념이 표시됩니다.</p>
+                  )}
                 </div>
               </article>
 
@@ -218,71 +197,28 @@ export function MaterialsPage() {
                 <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#f59e0b]" />
                 <div className="mb-4 flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#f59e0b]">priority_high</span>
-                  <h2 className="text-xl font-semibold leading-snug text-[#191b23]">반드시 기억할 내용</h2>
+                  <h2 className="text-xl font-semibold leading-snug text-[#191b23]">핵심 키워드</h2>
                 </div>
                 <ul className="list-disc space-y-3 pl-5 text-base leading-6 text-[#434655]">
-                  {REMEMBER_ITEMS.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
+                  {summary?.keywords.length ? (
+                    summary.keywords.map((keyword, index) => (
+                      <li key={`${index}-${keyword}`}>{keyword}</li>
+                    ))
+                  ) : (
+                    <li>요약을 생성하면 핵심 키워드가 표시됩니다.</li>
+                  )}
                 </ul>
               </article>
 
               <article className="relative overflow-hidden rounded-2xl border border-[#c3c6d7] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)] md:col-span-2">
                 <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#00687a]" />
                 <div className="mb-4 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#00687a]">compare_arrows</span>
-                  <h2 className="text-xl font-semibold leading-snug text-[#191b23]">개념 간 비교</h2>
+                  <span className="material-symbols-outlined text-[#00687a]">school</span>
+                  <h2 className="text-xl font-semibold leading-snug text-[#191b23]">쉽게 이해하기</h2>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-[#c3c6d7] text-sm font-medium text-[#191b23]">
-                        <th className="w-1/3 px-4 py-3">특징</th>
-                        <th className="w-1/3 px-4 py-3">프로세스 (Process)</th>
-                        <th className="w-1/3 px-4 py-3">스레드 (Thread)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-base leading-6 text-[#434655]">
-                      <tr className="border-b border-[#d9d9e5]">
-                        <td className="px-4 py-3 font-medium text-[#191b23]">자원 할당</td>
-                        <td className="px-4 py-3">독립적인 메모리 공간 할당</td>
-                        <td className="px-4 py-3">프로세스의 메모리 공간(Code, Data, Heap) 공유</td>
-                      </tr>
-                      <tr className="border-b border-[#d9d9e5]">
-                        <td className="px-4 py-3 font-medium text-[#191b23]">통신 방식</td>
-                        <td className="px-4 py-3">IPC(Inter-Process Communication) 필요</td>
-                        <td className="px-4 py-3">공유 메모리를 통한 빠른 통신 가능</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 font-medium text-[#191b23]">안정성</td>
-                        <td className="px-4 py-3">하나의 프로세스가 죽어도 다른 프로세스에 영향 없음</td>
-                        <td className="px-4 py-3">하나의 스레드 문제가 전체 프로세스 종료로 이어질 수 있음</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-
-              <article className="relative flex flex-col items-start gap-6 overflow-hidden rounded-2xl border border-[#c3c6d7] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)] sm:flex-row md:col-span-2">
-                <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#bc4800]" />
-                <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-[#ffdbcd] p-4 text-[#7d2d00]">
-                  <span className="material-symbols-outlined mb-1 text-[32px]">checklist</span>
-                  <span className="text-xs font-semibold">Checklist</span>
-                </div>
-                <div className="flex-1">
-                  <h2 className="mb-3 text-xl font-semibold leading-snug text-[#191b23]">시험 전 확인할 항목</h2>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {CHECKLIST_ITEMS.map((item) => (
-                      <label
-                        key={item}
-                        className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#d9d9e5] p-3 transition hover:bg-[#f3f3fe]"
-                      >
-                        <input className="mt-1 rounded text-[#004ac6] focus:ring-[#004ac6]" type="checkbox" />
-                        <span className="text-base leading-6 text-[#434655]">{item}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                <p className="text-base leading-7 text-[#434655]">
+                  {summary?.easyExplain || '요약을 생성하면 쉬운 설명이 표시됩니다.'}
+                </p>
               </article>
             </div>
           </section>

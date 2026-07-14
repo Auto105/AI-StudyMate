@@ -1,3 +1,5 @@
+import type { OxQuestion, QuizQuestion } from './quiz';
+
 export type StudyTabId = 'today' | 'materials' | 'questions' | 'quiz';
 
 export interface StudyTask {
@@ -50,6 +52,11 @@ export interface StudyPlan {
   days: StudyPlanDay[];
 }
 
+export interface StudyPlanResult {
+  today: StudyTask[];
+  days: PlanDay[];
+}
+
 export interface QuizMcq {
   question: string;
   options: string[];
@@ -84,17 +91,30 @@ export interface PlanInput {
 export interface CachedPlan {
   inputHash: string;
   input: PlanInput;
-  result: StudyPlan;
+  result: StudyPlanResult;
+  updatedAt: string;
+}
+
+export interface StudyQuiz {
+  mcq: QuizQuestion[];
+  ox: OxQuestion[];
+}
+
+export interface CachedQuiz {
+  textHash: string;
+  result: StudyQuiz;
+  selectedChoice: string;
   updatedAt: string;
 }
 
 export interface StudyData {
   profile: StudyProfile;
   extractedText: string;
+  preview: string;
   summary: CachedSummary | null;
   chatHistory: ChatMessage[];
   plan: CachedPlan | null;
-  quiz: QuizResult | null;
+  quiz: CachedQuiz | null;
 }
 
 export interface ApiChatResponse {

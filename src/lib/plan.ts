@@ -113,11 +113,17 @@ export function selectFallbackPlanByDday(input: PlanInput, today = getTodayIso()
     },
     {
       title: '개념 간 차이 비교',
-      tasks: [`${keywords[0]}와 ${keywords[1] ?? '관련 개념'}의 차이를 표로 쓴다.`, concepts[1]],
+      tasks: [
+        `${keywords[0]}와 ${keywords[1] ?? '관련 개념'}의 차이를 표로 쓴다.`,
+        concepts[1] ?? `${keywords[1] ?? '핵심 개념'}를 예시와 함께 정리한다.`,
+      ],
     },
     {
       title: '예시로 설명하기',
-      tasks: ['각 개념을 실제 예시 하나로 설명한다.', concepts[2]],
+      tasks: [
+        '각 개념을 실제 예시 하나로 설명한다.',
+        concepts[2] ?? `${keywords[2] ?? '핵심 개념'}의 적용 예시를 정리한다.`,
+      ],
     },
     {
       title: '자료 기반 Q&A',

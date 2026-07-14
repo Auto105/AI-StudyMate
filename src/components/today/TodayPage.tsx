@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { useStudyProfile } from '@/hooks/useStudyProfile';
 import { createStudyPlan } from '@/lib/api/client';
@@ -49,12 +50,17 @@ function buildDateChips(plan: PlanResponse | null, examDate: string) {
 export function TodayPage() {
   const { profile, setProfile, isReady: isProfileReady } = useStudyProfile();
   const { material } = useStudyMaterials();
-  const [plan, setPlan] = useState<PlanResponse | null>(null);
+  const { getPlan, savePlan } = useStudyData();
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const planInput = useMemo(
+    () => createPlanInput(profile.subject, profile.examDate, material.summary),
+    [material.summary, profile.examDate, profile.subject],
+  );
+  const plan = getPlan(planInput);
 
   useEffect(() => {
-    if (!isProfileReady || !profile.examDate.trim()) {
+    if (!isProfileReady || !profile.examDate.trim() || plan) {
       return;
     }
 
@@ -65,15 +71,13 @@ export function TodayPage() {
       setPlanError(null);
 
       try {
-        const planInput = createPlanInput(profile.subject, profile.examDate, material.summary);
         const result = await createStudyPlan(planInput);
 
         if (isCurrent) {
-          setPlan(result);
+          savePlan(planInput, result);
         }
       } catch (error) {
         if (isCurrent) {
-          setPlan(null);
           setPlanError(error instanceof Error ? error.message : '학습 계획을 불러오지 못했습니다.');
         }
       } finally {
@@ -88,7 +92,7 @@ export function TodayPage() {
     return () => {
       isCurrent = false;
     };
-  }, [isProfileReady, profile.subject, profile.examDate, material.summary]);
+  }, [isProfileReady, plan, planInput, savePlan]);
 
   const dateChips = buildDateChips(plan, profile.examDate);
   const todayTasks = plan?.today ?? [];

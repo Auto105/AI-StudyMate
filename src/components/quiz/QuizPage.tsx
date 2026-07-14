@@ -2,21 +2,23 @@
 
 import { useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
+import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { createQuiz } from '@/lib/api/client';
-import { mockQuiz } from '@/lib/mock/quiz';
-import type { QuizResponse } from '@/types/api';
+import { getMockQuiz, mockQuiz } from '@/lib/mock/quiz';
 
 const DEFAULT_MATERIAL_TEXT = '운영체제에서 프로세스는 실행 중인 프로그램이고 스레드는 프로세스 안의 실행 단위다.';
 
 export function QuizPage() {
   const { material } = useStudyMaterials();
-  const [quiz, setQuiz] = useState<QuizResponse | null>(null);
-  const [selectedChoice, setSelectedChoice] = useState<string>('');
+  const { getQuiz, saveQuiz, setSelectedQuizChoice } = useStudyData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
 
-  const activeQuiz = quiz ?? mockQuiz;
+  const quizText = material.text || DEFAULT_MATERIAL_TEXT;
+  const cachedQuiz = getQuiz(quizText);
+  const activeQuiz = cachedQuiz?.result ?? mockQuiz;
+  const selectedChoice = cachedQuiz?.selectedChoice ?? '';
   const activeQuestion = activeQuiz.mcq[0] ?? mockQuiz.mcq[0];
   const totalQuestions = activeQuiz.mcq.length + activeQuiz.ox.length;
 
@@ -25,12 +27,10 @@ export function QuizPage() {
     setShowFallback(false);
 
     try {
-      const response = await createQuiz({ text: material.text || DEFAULT_MATERIAL_TEXT });
-      setQuiz(response);
-      setSelectedChoice('');
+      const response = await createQuiz({ text: quizText });
+      saveQuiz(quizText, response);
     } catch {
-      setQuiz(mockQuiz);
-      setSelectedChoice('');
+      saveQuiz(quizText, getMockQuiz(quizText));
       setShowFallback(true);
     } finally {
       setIsGenerating(false);
@@ -83,7 +83,7 @@ export function QuizPage() {
                         className="sr-only"
                         value={choice}
                         checked={isSelected}
-                        onChange={() => setSelectedChoice(choice)}
+                        onChange={() => setSelectedQuizChoice(quizText, choice)}
                       />
                       <span
                         className={`flex items-center gap-4 rounded-xl border p-4 transition ${

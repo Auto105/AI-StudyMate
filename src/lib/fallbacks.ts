@@ -1,13 +1,9 @@
-import { mockSummary } from '@/lib/mock/summary';
+import { getMockSummary } from '@/lib/mock/summary';
 import { normalizePlanInput, selectFallbackPlanByDday } from '@/lib/plan';
 import type { PlanInput, StudyPlan, SummaryResult } from '@/types/study';
 
-export function getSummarizeFallback(): SummaryResult {
-  return {
-    keywords: [...mockSummary.keywords],
-    concepts: [...mockSummary.concepts],
-    easyExplain: mockSummary.easyExplain,
-  };
+export function getSummarizeFallback(text = ''): SummaryResult {
+  return getMockSummary(text);
 }
 
 export function getPlanFallback(input: PlanInput): StudyPlan {

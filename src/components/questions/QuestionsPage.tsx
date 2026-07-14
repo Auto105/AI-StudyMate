@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
-import { DEMO_CHAT_MESSAGES } from '@/constants/demo';
+import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { askQuestion } from '@/lib/api/client';
 import { getMockChatResponse } from '@/lib/mock/chat';
@@ -13,18 +13,26 @@ const SUGGESTIONS = [
   { icon: 'list_alt', label: '주요 용어 정리', question: '자료의 주요 용어를 정리해줘.' },
 ];
 
+const MATERIAL_GREETING: ChatMessage = {
+  id: 'assistant-material-greeting',
+  role: 'assistant',
+  content: '반가워요! 등록한 학습 자료에서 어떤 부분이 궁금하신가요?',
+};
+
 export function QuestionsPage() {
-  const { material } = useStudyMaterials();
+  const { material, isReady } = useStudyMaterials();
+  const { appendChatMessages, data } = useStudyData();
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>(DEMO_CHAT_MESSAGES);
   const [isSending, setIsSending] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
   const hasMaterial = material.text.trim().length > 0;
+  const messages = data.chatHistory;
+  const visibleMessages = isReady && hasMaterial && messages.length === 0 ? [MATERIAL_GREETING] : messages;
 
   async function handleSubmit() {
     const trimmedQuestion = question.trim();
 
-    if (!trimmedQuestion) {
+    if (!trimmedQuestion || !hasMaterial) {
       return;
     }
 
@@ -34,7 +42,7 @@ export function QuestionsPage() {
       content: trimmedQuestion,
     };
 
-    setMessages((current) => [...current, userMessage]);
+    appendChatMessages(...(messages.length === 0 ? [MATERIAL_GREETING, userMessage] : [userMessage]));
     setQuestion('');
     setIsSending(true);
     setShowFallback(false);
@@ -45,27 +53,21 @@ export function QuestionsPage() {
         question: trimmedQuestion,
       });
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response.answer,
-          grounded: response.grounded,
-        },
-      ]);
+      appendChatMessages({
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: response.answer,
+        grounded: response.grounded,
+      });
     } catch {
-      const fallback = getMockChatResponse(trimmedQuestion);
+      const fallback = getMockChatResponse(material.text, trimmedQuestion);
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-fallback-${Date.now()}`,
-          role: 'assistant',
-          content: fallback.answer,
-          grounded: fallback.grounded,
-        },
-      ]);
+      appendChatMessages({
+        id: `assistant-fallback-${Date.now()}`,
+        role: 'assistant',
+        content: fallback.answer,
+        grounded: fallback.grounded,
+      });
       setShowFallback(true);
     } finally {
       setIsSending(false);
@@ -82,13 +84,13 @@ export function QuestionsPage() {
 
         <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#c3c6d7]/50 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
-            {!hasMaterial ? (
+            {isReady && !hasMaterial ? (
               <div className="rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 아직 저장된 자료가 없습니다. Materials에서 텍스트를 추가하면 해당 내용 안에서 답합니다.
               </div>
             ) : null}
 
-            {messages.map((message) =>
+            {visibleMessages.map((message) =>
               message.role === 'user' ? (
                 <UserMessage key={message.id} content={message.content} />
               ) : (
@@ -169,12 +171,14 @@ function AssistantMessage({ content, grounded }: { content: string; grounded?: b
         <span className="ml-1 text-xs font-semibold text-[#434655]">AI-StudyMate</span>
         <div className="rounded-2xl rounded-tl-sm border border-[#c3c6d7]/30 bg-[#f3f3fe] px-5 py-4 text-base leading-relaxed text-[#191b23]">
           <p>{content}</p>
-          <div className="mt-4 flex items-center gap-2 border-t border-[#c3c6d7]/20 pt-4">
-            <span className="material-symbols-outlined text-sm text-[#434655]">description</span>
-            <span className="text-sm leading-5 text-[#434655]">
-              {grounded ? '등록한 학습 자료 기반 답변' : '자료에 없습니다.'}
-            </span>
-          </div>
+          {grounded !== undefined ? (
+            <div className="mt-4 flex items-center gap-2 border-t border-[#c3c6d7]/20 pt-4">
+              <span className="material-symbols-outlined text-sm text-[#434655]">description</span>
+              <span className="text-sm leading-5 text-[#434655]">
+                {grounded ? '등록한 학습 자료 기반 답변' : '자료에 없습니다.'}
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
     </article>
