@@ -10,6 +10,8 @@ import { StudyDataProvider } from '@/hooks/useStudyData';
 import type { StudyTabId } from '@/types/study';
 import { AppNavigation, MobileNavigation } from './AppNavigation';
 
+export const NAVIGATE_TAB_EVENT = 'ai-studymate-navigate-tab';
+
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<StudyTabId>('today');
   const [showUnavailableToast, setShowUnavailableToast] = useState(false);
@@ -26,6 +28,24 @@ export function AppShell() {
 
     return () => window.clearTimeout(timeoutId);
   }, [showUnavailableToast]);
+
+  useEffect(() => {
+    function handleNavigateTab(event: Event) {
+      const customEvent = event as CustomEvent<{ tab: StudyTabId }>;
+
+      if (!customEvent.detail?.tab) {
+        return;
+      }
+
+      setActiveTab(customEvent.detail.tab);
+    }
+
+    window.addEventListener(NAVIGATE_TAB_EVENT, handleNavigateTab);
+
+    return () => {
+      window.removeEventListener(NAVIGATE_TAB_EVENT, handleNavigateTab);
+    };
+  }, []);
 
   function showUnavailableMessage() {
     setShowUnavailableToast(true);

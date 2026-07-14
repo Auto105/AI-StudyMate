@@ -12,10 +12,10 @@
 
 ### `USE_MOCK_API=false`
 
-- `POST /api/chat`, `POST /api/summarize`, and `POST /api/plan` call OpenAI and require `OPENAI_API_KEY`.
+- `POST /api/chat`, `POST /api/summarize`, `POST /api/plan`, and `POST /api/quiz` call OpenAI and require `OPENAI_API_KEY`.
 - `POST /api/plan` returns `PlanResponse` where every task has `{ id, title }`.
 - OpenAI plan 실패 시 D-day fallback JSON을 `{ id, title }` 형식으로 변환해 반환합니다.
-- `POST /api/quiz` currently returns `501` with `{ "error": "..." }`.
+- `POST /api/quiz` returns material-based MCQ/OX. OpenAI 실패 시 Mock quiz fallback JSON을 반환합니다.
 - `POST /api/upload` continues to accept pasted text or a validated PDF and returns `{ text, truncated }`.
 
 AI StudyMate API는 Next.js Route Handler로 구현하며 모든 응답은 JSON입니다.
@@ -266,6 +266,8 @@ Validation:
 
 - `text`는 비어 있지 않은 문자열이어야 합니다.
 - malformed JSON은 `400`과 `{ "error": "Invalid JSON body." }`를 반환합니다.
+- OpenAI 경로는 객관식 3개 이상, OX 2개 이상을 생성합니다.
+- OpenAI 내부 스키마는 `options` / `question`이며, Route는 프론트 계약에 맞게 `choices` / `statement` / `id`로 변환해 반환합니다.
 
 Frontend client:
 

@@ -1,24 +1,55 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
+import { NAVIGATE_TAB_EVENT } from '@/components/layout/AppShell';
 import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { createQuiz } from '@/lib/api/client';
 import { getMockQuiz } from '@/lib/mock/quiz';
+import type { QuizResponse } from '@/types/api';
+import type { StudyQuiz } from '@/types/study';
+import type { OxQuestion, QuizQuestion } from '@/types/quiz';
+
+type QuizItem =
+  | {
+      id: string;
+      type: 'mcq';
+      prompt: string;
+      choices: string[];
+      correctAnswer: string;
+      explanation: string;
+    }
+  | {
+      id: string;
+      type: 'ox';
+      prompt: string;
+      choices: ['O', 'X'];
+      correctAnswer: 'O' | 'X';
+      explanation: string;
+    };
 
 export function QuizPage() {
   const { material } = useStudyMaterials();
-  const { getQuiz, saveQuiz, setSelectedQuizChoice } = useStudyData();
+  const { getQuiz, saveQuiz } = useStudyData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const materialText = material.text.trim();
   const cachedQuiz = materialText ? getQuiz(materialText) : null;
   const activeQuiz = cachedQuiz?.result ?? null;
-  const selectedChoice = cachedQuiz?.selectedChoice ?? '';
-  const activeQuestion = activeQuiz?.mcq[0] ?? null;
-  const totalQuestions = activeQuiz ? activeQuiz.mcq.length + activeQuiz.ox.length : 0;
+  const questions = activeQuiz ? buildQuestions(activeQuiz) : [];
+  const currentQuestion = questions[currentIndex] ?? null;
+  const totalQuestions = questions.length;
+  const progressWidth = totalQuestions > 0 ? `${((currentIndex + 1) / totalQuestions) * 100}%` : '0%';
+  const isComplete = totalQuestions > 0 && currentIndex >= totalQuestions;
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    setAnswers({});
+  }, [materialText, activeQuiz]);
 
   async function handleGenerate() {
     if (!materialText) {
@@ -30,13 +61,41 @@ export function QuizPage() {
 
     try {
       const response = await createQuiz({ text: materialText });
-      saveQuiz(materialText, response);
+      saveQuiz(materialText, normalizeQuizResponse(response));
+      setCurrentIndex(0);
+      setAnswers({});
     } catch {
-      saveQuiz(materialText, getMockQuiz(materialText));
+      saveQuiz(materialText, normalizeQuizResponse(getMockQuiz(materialText)));
+      setCurrentIndex(0);
+      setAnswers({});
       setShowFallback(true);
     } finally {
       setIsGenerating(false);
     }
+  }
+
+  function handleSelectAnswer(choice: string) {
+    if (!currentQuestion) {
+      return;
+    }
+
+    setAnswers((current) => ({
+      ...current,
+      [currentQuestion.id]: choice,
+    }));
+  }
+
+  function handleRestart() {
+    setCurrentIndex(0);
+    setAnswers({});
+  }
+
+  function handleNavigateToday() {
+    window.dispatchEvent(
+      new CustomEvent(NAVIGATE_TAB_EVENT, {
+        detail: { tab: 'today' as const },
+      }),
+    );
   }
 
   return (
@@ -62,32 +121,56 @@ export function QuizPage() {
             <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#2563eb]" />
 
             <div className="pl-4">
-              {activeQuestion ? (
+              {isComplete ? (
+                <div className="flex min-h-80 flex-col items-center justify-center px-4 text-center">
+                  <span className="material-symbols-outlined mb-4 text-5xl text-[#2563eb]">task_alt</span>
+                  <h2 className="mb-2 text-3xl font-semibold leading-snug text-[#191b23]">퀴즈 완료!</h2>
+                  <p className="mb-8 text-base leading-7 text-[#434655]">
+                    총 {totalQuestions}문제를 모두 풀었습니다.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleRestart}
+                      className="rounded-xl border border-[#c3c6d7] bg-white px-5 py-3 text-sm font-medium text-[#191b23] transition hover:bg-[#f3f3fe]"
+                    >
+                      다시 풀기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNavigateToday}
+                      className="rounded-xl bg-[#2563eb] px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-[#004ac6]"
+                    >
+                      Today로 돌아가기
+                    </button>
+                  </div>
+                </div>
+              ) : currentQuestion ? (
                 <>
                   <div className="mb-6 flex items-center justify-between gap-4">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#2563eb]">
-                      Question 1 of {totalQuestions}
+                      Question {currentIndex + 1} of {totalQuestions}
                     </span>
                     <div className="h-2 w-1/3 overflow-hidden rounded-full bg-[#e1e2ed]">
-                      <div className="h-full rounded-full bg-[#2563eb]" style={{ width: '30%' }} />
+                      <div className="h-full rounded-full bg-[#2563eb]" style={{ width: progressWidth }} />
                     </div>
                   </div>
 
-                  <h2 className="mb-8 text-2xl font-semibold leading-snug text-[#191b23]">{activeQuestion.question}</h2>
+                  <h2 className="mb-8 text-2xl font-semibold leading-snug text-[#191b23]">{currentQuestion.prompt}</h2>
 
                   <div className="mb-8 space-y-4">
-                    {activeQuestion.choices.map((choice) => {
-                      const isSelected = selectedChoice === choice;
+                    {currentQuestion.choices.map((choice) => {
+                      const isSelected = answers[currentQuestion.id] === choice;
 
                       return (
                         <label key={choice} className="block cursor-pointer">
                           <input
                             type="radio"
-                            name={activeQuestion.id}
+                            name={currentQuestion.id}
                             className="sr-only"
                             value={choice}
                             checked={isSelected}
-                            onChange={() => setSelectedQuizChoice(materialText, choice)}
+                            onChange={() => handleSelectAnswer(choice)}
                           />
                           <span
                             className={`flex items-center gap-4 rounded-xl border p-4 transition ${
@@ -117,16 +200,19 @@ export function QuizPage() {
                   <div className="flex items-center justify-between border-t border-[#c3c6d7] pt-4">
                     <button
                       type="button"
-                      className="flex items-center gap-2 rounded-xl border border-[#c3c6d7] px-6 py-2 text-sm font-medium text-[#191b23] transition hover:bg-white"
+                      onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+                      disabled={currentIndex === 0}
+                      className="flex items-center gap-2 rounded-xl border border-[#c3c6d7] px-6 py-2 text-sm font-medium text-[#191b23] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                       이전
                     </button>
                     <button
                       type="button"
-                      className="flex items-center gap-2 rounded-xl bg-[#2563eb] px-6 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#004ac6]"
+                      onClick={() => setCurrentIndex((index) => Math.min(totalQuestions, index + 1))}
+                      className="flex items-center gap-2 rounded-xl bg-[#2563eb] px-6 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#004ac6] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      다음
+                      {currentIndex === totalQuestions - 1 ? '완료' : '다음'}
                       <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                     </button>
                   </div>
@@ -158,7 +244,7 @@ export function QuizPage() {
           </button>
         </section>
 
-        <QuizRightPanel />
+        <QuizRightPanel activeQuiz={activeQuiz} hasMaterial={Boolean(materialText)} />
       </div>
 
       <ApiFallbackOverlay isVisible={showFallback} onRetry={() => setShowFallback(false)} />
@@ -166,15 +252,95 @@ export function QuizPage() {
   );
 }
 
-function QuizRightPanel() {
+function QuizRightPanel({
+  activeQuiz,
+  hasMaterial,
+}: {
+  activeQuiz: StudyQuiz | null;
+  hasMaterial: boolean;
+}) {
   return (
     <aside className="w-full shrink-0 space-y-6 md:w-[320px]">
       <section className="rounded-2xl border border-[#c3c6d7] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
         <h3 className="mb-4 text-xl font-semibold leading-snug text-[#191b23]">Quiz Status</h3>
-        <p className="text-sm leading-6 text-[#434655]">
-          업로드된 자료를 기준으로 퀴즈를 생성합니다. Today 계획과 필수 학습 동선에는 포함하지 않습니다.
-        </p>
+        <div className="space-y-3 text-sm leading-6 text-[#434655]">
+          <p>업로드된 자료를 기준으로 퀴즈를 생성합니다. Today 계획과 필수 학습 동선에는 포함하지 않습니다.</p>
+          {hasMaterial ? (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <span>객관식</span>
+                <span className="font-semibold text-[#191b23]">{activeQuiz?.mcq.length ?? 0}개</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>OX</span>
+                <span className="font-semibold text-[#191b23]">{activeQuiz?.ox.length ?? 0}개</span>
+              </div>
+            </>
+          ) : null}
+        </div>
       </section>
     </aside>
   );
+}
+
+function buildQuestions(quiz: StudyQuiz): QuizItem[] {
+  return [
+    ...quiz.mcq.map((question) => ({
+      id: question.id,
+      type: 'mcq' as const,
+      prompt: question.question,
+      choices: question.choices,
+      correctAnswer: question.answer,
+      explanation: question.explanation,
+    })),
+    ...quiz.ox.map((question) => ({
+      id: question.id,
+      type: 'ox' as const,
+      prompt: question.statement,
+      choices: ['O', 'X'] as ['O', 'X'],
+      correctAnswer: (question.answer ? 'O' : 'X') as 'O' | 'X',
+      explanation: question.explanation,
+    })),
+  ];
+}
+
+/** API(choices/statement)와 validator(options/question) 형식을 UI용으로 통일한다. */
+function normalizeQuizResponse(quiz: QuizResponse): StudyQuiz {
+  return {
+    mcq: quiz.mcq.map((question, index) => normalizeMcqQuestion(question, index)),
+    ox: quiz.ox.map((question, index) => normalizeOxQuestion(question, index)),
+  };
+}
+
+function normalizeMcqQuestion(question: QuizQuestion & { options?: string[] }, index: number): QuizQuestion {
+  const choices =
+    Array.isArray(question.choices) && question.choices.length > 0
+      ? question.choices
+      : Array.isArray(question.options)
+        ? question.options
+        : [];
+
+  return {
+    id: question.id?.trim() || `mcq-${index + 1}`,
+    question: question.question,
+    choices,
+    answer: question.answer,
+    explanation: question.explanation,
+  };
+}
+
+function normalizeOxQuestion(question: OxQuestion & { question?: string }, index: number): OxQuestion {
+  const statement =
+    typeof question.statement === 'string' && question.statement.trim()
+      ? question.statement
+      : typeof question.question === 'string'
+        ? question.question
+        : '';
+
+  return {
+    id: question.id?.trim() || `ox-${index + 1}`,
+    statement,
+    answer: question.answer,
+    explanation: question.explanation,
+  };
 }
