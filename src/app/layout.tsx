@@ -1,9 +1,35 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
+const siteTitle = 'AI-StudyMate';
+const siteDescription =
+  '저장된 과목, 시험일, 학습자료를 바탕으로 오늘의 공부 계획을 먼저 제안하는 AI 학습 도우미 POC';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
 export const metadata: Metadata = {
-  title: 'AI-StudyMate',
-  description: '저장된 과목, 시험일, 학습자료를 바탕으로 오늘의 공부 계획을 먼저 제안하는 AI 학습 도우미 POC',
+  title: siteTitle,
+  description: siteDescription,
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    type: 'website',
+    locale: 'ko_KR',
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'AI-StudyMate',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: siteTitle,
+    description: siteDescription,
+    images: ['/opengraph-image.png'],
+  },
 };
 
 export default function RootLayout({
