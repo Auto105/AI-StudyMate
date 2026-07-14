@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { invalidJsonBodyResponse, readJsonBody } from '@/lib/api/request';
 import { isMockApiEnabled } from '@/lib/mock/config';
-import { mockSummary } from '@/lib/mock/summary';
+import { getMockSummary } from '@/lib/mock/summary';
 import type { ApiErrorResponse, SummarizeRequest, SummarizeResponse } from '@/types/api';
 
 export async function POST(request: Request) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     if (isMockApiEnabled()) {
-      return NextResponse.json<SummarizeResponse>(mockSummary);
+      return NextResponse.json<SummarizeResponse>(getMockSummary(body.text));
     }
 
     return NextResponse.json<ApiErrorResponse>(

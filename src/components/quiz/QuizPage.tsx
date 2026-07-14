@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { createQuiz } from '@/lib/api/client';
-import { mockQuiz } from '@/lib/mock/quiz';
+import { getMockQuiz, mockQuiz } from '@/lib/mock/quiz';
 import type { QuizResponse } from '@/types/api';
 
 const DEFAULT_MATERIAL_TEXT = '운영체제에서 프로세스는 실행 중인 프로그램이고 스레드는 프로세스 안의 실행 단위다.';
@@ -29,7 +29,7 @@ export function QuizPage() {
       setQuiz(response);
       setSelectedChoice('');
     } catch {
-      setQuiz(mockQuiz);
+      setQuiz(getMockQuiz(material.text || DEFAULT_MATERIAL_TEXT));
       setSelectedChoice('');
       setShowFallback(true);
     } finally {

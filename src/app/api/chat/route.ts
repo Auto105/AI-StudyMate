@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     if (isMockApiEnabled()) {
-      return NextResponse.json<ChatResponse>(getMockChatResponse(body.question));
+      return NextResponse.json<ChatResponse>(getMockChatResponse(body.text, body.question));
     }
 
     const prompt = chatPrompt(truncateText(body.text), body.question.trim());

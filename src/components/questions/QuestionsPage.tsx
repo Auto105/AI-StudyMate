@@ -55,7 +55,7 @@ export function QuestionsPage() {
         },
       ]);
     } catch {
-      const fallback = getMockChatResponse(trimmedQuestion);
+      const fallback = getMockChatResponse(material.text, trimmedQuestion);
 
       setMessages((current) => [
         ...current,

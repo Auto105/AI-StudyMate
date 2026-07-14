@@ -42,6 +42,22 @@ export function MaterialsPage() {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
+  const activeSummary = material.summary;
+  const summaryKeywords = activeSummary?.keywords ?? [];
+  const summaryConcepts = activeSummary?.concepts ?? [];
+  const summaryTitle = summaryKeywords.length > 0 ? `${summaryKeywords[0]} 자료 기반` : '운영체제 5주차 강의자료.pdf 기반';
+  const rememberItems =
+    summaryKeywords.length > 0
+      ? summaryKeywords.slice(0, 4).map((keyword) => `${keyword} 개념을 자료 내용과 연결해 설명하기`)
+      : REMEMBER_ITEMS;
+  const checklistItems =
+    summaryKeywords.length > 0
+      ? [
+          `${summaryKeywords[0]} 핵심 정의를 말로 설명하기`,
+          summaryKeywords[1] ? `${summaryKeywords[0]}와 ${summaryKeywords[1]}의 관계 정리하기` : '주요 개념 간 관계 정리하기',
+          '요약을 보지 않고 전체 흐름 다시 말하기',
+        ]
+      : CHECKLIST_ITEMS;
 
   async function handlePdfUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -91,7 +107,7 @@ export function MaterialsPage() {
       const summary = await summarizeMaterial({ text });
       setMaterial({ ...material, summary });
     } catch {
-      setMaterial({ ...material, summary: getSummarizeFallback() });
+      setMaterial({ ...material, summary: getSummarizeFallback(text) });
       setError('API 요청에 실패해 데모 요약을 불러왔습니다.');
       setShowFallback(true);
     } finally {
@@ -175,7 +191,7 @@ export function MaterialsPage() {
               <div>
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#dbe1ff] px-3 py-1">
                   <span className="material-symbols-outlined text-sm text-[#004ac6]">auto_awesome</span>
-                  <span className="text-xs font-semibold text-[#004ac6]">운영체제 5주차 강의자료.pdf 기반</span>
+                  <span className="text-xs font-semibold text-[#004ac6]">{summaryTitle}</span>
                 </div>
                 <h2 className="mb-2 text-5xl font-bold leading-tight text-[#191b23]">AI 요약</h2>
                 <p className="text-lg leading-7 text-[#434655]">등록한 학습 자료에서 핵심 내용만 정리했어요.</p>
@@ -205,12 +221,19 @@ export function MaterialsPage() {
                   <h2 className="text-xl font-semibold leading-snug text-[#191b23]">핵심 개념</h2>
                 </div>
                 <div className="space-y-4 text-base leading-6 text-[#434655]">
-                  {KEY_CONCEPTS.map((concept) => (
-                    <div key={concept.title}>
-                      <strong className="mb-1 block text-[#191b23]">{concept.title}</strong>
-                      <p>{concept.description}</p>
-                    </div>
-                  ))}
+                  {activeSummary
+                    ? summaryConcepts.map((concept, index) => (
+                        <div key={concept}>
+                          <strong className="mb-1 block text-[#191b23]">{summaryKeywords[index] ?? `핵심 개념 ${index + 1}`}</strong>
+                          <p>{concept}</p>
+                        </div>
+                      ))
+                    : KEY_CONCEPTS.map((concept) => (
+                        <div key={concept.title}>
+                          <strong className="mb-1 block text-[#191b23]">{concept.title}</strong>
+                          <p>{concept.description}</p>
+                        </div>
+                      ))}
                 </div>
               </article>
 
@@ -221,7 +244,7 @@ export function MaterialsPage() {
                   <h2 className="text-xl font-semibold leading-snug text-[#191b23]">반드시 기억할 내용</h2>
                 </div>
                 <ul className="list-disc space-y-3 pl-5 text-base leading-6 text-[#434655]">
-                  {REMEMBER_ITEMS.map((item) => (
+                  {rememberItems.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
@@ -234,32 +257,45 @@ export function MaterialsPage() {
                   <h2 className="text-xl font-semibold leading-snug text-[#191b23]">개념 간 비교</h2>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-[#c3c6d7] text-sm font-medium text-[#191b23]">
-                        <th className="w-1/3 px-4 py-3">특징</th>
-                        <th className="w-1/3 px-4 py-3">프로세스 (Process)</th>
-                        <th className="w-1/3 px-4 py-3">스레드 (Thread)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-base leading-6 text-[#434655]">
-                      <tr className="border-b border-[#d9d9e5]">
-                        <td className="px-4 py-3 font-medium text-[#191b23]">자원 할당</td>
-                        <td className="px-4 py-3">독립적인 메모리 공간 할당</td>
-                        <td className="px-4 py-3">프로세스의 메모리 공간(Code, Data, Heap) 공유</td>
-                      </tr>
-                      <tr className="border-b border-[#d9d9e5]">
-                        <td className="px-4 py-3 font-medium text-[#191b23]">통신 방식</td>
-                        <td className="px-4 py-3">IPC(Inter-Process Communication) 필요</td>
-                        <td className="px-4 py-3">공유 메모리를 통한 빠른 통신 가능</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 font-medium text-[#191b23]">안정성</td>
-                        <td className="px-4 py-3">하나의 프로세스가 죽어도 다른 프로세스에 영향 없음</td>
-                        <td className="px-4 py-3">하나의 스레드 문제가 전체 프로세스 종료로 이어질 수 있음</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  {activeSummary ? (
+                    <div className="space-y-3 text-base leading-6 text-[#434655]">
+                      <p className="font-medium text-[#191b23]">{activeSummary.easyExplain}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {summaryKeywords.map((keyword) => (
+                          <span key={keyword} className="rounded-full bg-[#dbe1ff] px-3 py-1 text-sm font-semibold text-[#004ac6]">
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="border-b border-[#c3c6d7] text-sm font-medium text-[#191b23]">
+                          <th className="w-1/3 px-4 py-3">특징</th>
+                          <th className="w-1/3 px-4 py-3">프로세스 (Process)</th>
+                          <th className="w-1/3 px-4 py-3">스레드 (Thread)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-base leading-6 text-[#434655]">
+                        <tr className="border-b border-[#d9d9e5]">
+                          <td className="px-4 py-3 font-medium text-[#191b23]">자원 할당</td>
+                          <td className="px-4 py-3">독립적인 메모리 공간 할당</td>
+                          <td className="px-4 py-3">프로세스의 메모리 공간(Code, Data, Heap) 공유</td>
+                        </tr>
+                        <tr className="border-b border-[#d9d9e5]">
+                          <td className="px-4 py-3 font-medium text-[#191b23]">통신 방식</td>
+                          <td className="px-4 py-3">IPC(Inter-Process Communication) 필요</td>
+                          <td className="px-4 py-3">공유 메모리를 통한 빠른 통신 가능</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 font-medium text-[#191b23]">안정성</td>
+                          <td className="px-4 py-3">하나의 프로세스가 죽어도 다른 프로세스에 영향 없음</td>
+                          <td className="px-4 py-3">하나의 스레드 문제가 전체 프로세스 종료로 이어질 수 있음</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </article>
 
@@ -272,7 +308,7 @@ export function MaterialsPage() {
                 <div className="flex-1">
                   <h2 className="mb-3 text-xl font-semibold leading-snug text-[#191b23]">시험 전 확인할 항목</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {CHECKLIST_ITEMS.map((item) => (
+                    {checklistItems.map((item) => (
                       <label
                         key={item}
                         className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#d9d9e5] p-3 transition hover:bg-[#f3f3fe]"
