@@ -6,6 +6,8 @@ import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { createQuiz } from '@/lib/api/client';
 import { getMockQuiz } from '@/lib/mock/quiz';
+import type { QuizResponse } from '@/types/api';
+import type { OxQuestion, QuizQuestion } from '@/types/quiz';
 
 export function QuizPage() {
   const { material } = useStudyMaterials();
@@ -18,7 +20,9 @@ export function QuizPage() {
   const activeQuiz = cachedQuiz?.result ?? null;
   const selectedChoice = cachedQuiz?.selectedChoice ?? '';
   const activeQuestion = activeQuiz?.mcq[0] ?? null;
-  const totalQuestions = activeQuiz ? activeQuiz.mcq.length + activeQuiz.ox.length : 0;
+  const mcqCount = activeQuiz?.mcq.length ?? 0;
+  const oxCount = activeQuiz?.ox.length ?? 0;
+  const totalQuestions = mcqCount + oxCount;
 
   async function handleGenerate() {
     if (!materialText) {
@@ -30,7 +34,7 @@ export function QuizPage() {
 
     try {
       const response = await createQuiz({ text: materialText });
-      saveQuiz(materialText, response);
+      saveQuiz(materialText, normalizeQuizResponse(response));
     } catch {
       saveQuiz(materialText, getMockQuiz(materialText));
       setShowFallback(true);
@@ -158,7 +162,7 @@ export function QuizPage() {
           </button>
         </section>
 
-        <QuizRightPanel />
+        <QuizRightPanel mcqCount={mcqCount} oxCount={oxCount} hasMaterial={Boolean(materialText)} />
       </div>
 
       <ApiFallbackOverlay isVisible={showFallback} onRetry={() => setShowFallback(false)} />
@@ -166,7 +170,15 @@ export function QuizPage() {
   );
 }
 
-function QuizRightPanel() {
+function QuizRightPanel({
+  mcqCount,
+  oxCount,
+  hasMaterial,
+}: {
+  mcqCount: number;
+  oxCount: number;
+  hasMaterial: boolean;
+}) {
   return (
     <aside className="w-full shrink-0 space-y-6 md:w-[320px]">
       <section className="rounded-2xl border border-[#c3c6d7] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
@@ -174,7 +186,53 @@ function QuizRightPanel() {
         <p className="text-sm leading-6 text-[#434655]">
           업로드된 자료를 기준으로 퀴즈를 생성합니다. Today 계획과 필수 학습 동선에는 포함하지 않습니다.
         </p>
+        {hasMaterial && mcqCount + oxCount > 0 ? (
+          <p className="mt-4 text-sm font-medium leading-6 text-[#191b23]">
+            객관식 {mcqCount}문항 · OX {oxCount}문항
+          </p>
+        ) : null}
       </section>
     </aside>
   );
+}
+
+/** API(choices/statement)와 validator(options/question) 형식을 UI용으로 통일한다. */
+function normalizeQuizResponse(quiz: QuizResponse): QuizResponse {
+  return {
+    mcq: quiz.mcq.map((question, index) => normalizeMcqQuestion(question, index)),
+    ox: quiz.ox.map((question, index) => normalizeOxQuestion(question, index)),
+  };
+}
+
+function normalizeMcqQuestion(question: QuizQuestion & { options?: string[] }, index: number): QuizQuestion {
+  const choices =
+    Array.isArray(question.choices) && question.choices.length > 0
+      ? question.choices
+      : Array.isArray(question.options)
+        ? question.options
+        : [];
+
+  return {
+    id: question.id?.trim() || `mcq-${index + 1}`,
+    question: question.question,
+    choices,
+    answer: question.answer,
+    explanation: question.explanation,
+  };
+}
+
+function normalizeOxQuestion(question: OxQuestion & { question?: string }, index: number): OxQuestion {
+  const statement =
+    typeof question.statement === 'string' && question.statement.trim()
+      ? question.statement
+      : typeof question.question === 'string'
+        ? question.question
+        : '';
+
+  return {
+    id: question.id?.trim() || `ox-${index + 1}`,
+    statement,
+    answer: question.answer,
+    explanation: question.explanation,
+  };
 }
