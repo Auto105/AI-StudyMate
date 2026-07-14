@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
 import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
@@ -28,6 +28,11 @@ export function QuestionsPage() {
   const hasMaterial = material.text.trim().length > 0;
   const messages = data.chatHistory;
   const visibleMessages = isReady && hasMaterial && messages.length === 0 ? [MATERIAL_GREETING] : messages;
+
+  useEffect(() => {
+    setQuestion('');
+    setShowFallback(false);
+  }, [material.text]);
 
   async function handleSubmit() {
     const trimmedQuestion = question.trim();
@@ -108,7 +113,8 @@ export function QuestionsPage() {
                   key={suggestion.label}
                   type="button"
                   onClick={() => setQuestion(suggestion.question)}
-                  className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#c3c6d7]/50 bg-[#ededf9] px-3 py-1.5 text-sm font-medium text-[#434655] transition hover:bg-[#e7e7f3] hover:text-[#004ac6]"
+                  disabled={!hasMaterial}
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#c3c6d7]/50 bg-[#ededf9] px-3 py-1.5 text-sm font-medium text-[#434655] transition hover:bg-[#e7e7f3] hover:text-[#004ac6] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-[16px]">{suggestion.icon}</span>
                   {suggestion.label}
@@ -136,11 +142,12 @@ export function QuestionsPage() {
                 }}
                 placeholder="질문을 입력하세요..."
                 className="max-h-32 flex-1 resize-none border-none bg-transparent py-2 text-base leading-6 text-[#191b23] outline-none placeholder:text-[#9ca3af] focus:ring-0"
+                disabled={!hasMaterial}
               />
               <button
                 type="button"
                 onClick={() => void handleSubmit()}
-                disabled={isSending || !question.trim()}
+                disabled={isSending || !hasMaterial || !question.trim()}
                 className="self-end rounded-lg bg-[#2563eb] p-2 text-white shadow-sm transition hover:bg-[#b4c5ff] hover:text-[#00174b] disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="질문 전송"
               >

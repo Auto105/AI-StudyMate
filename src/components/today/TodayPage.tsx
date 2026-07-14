@@ -51,16 +51,38 @@ export function TodayPage() {
   const { profile, setProfile, isReady: isProfileReady } = useStudyProfile();
   const { material } = useStudyMaterials();
   const { getPlan, savePlan } = useStudyData();
+  const [draftProfile, setDraftProfile] = useState(profile);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const hasSavedSubject = profile.subject.trim().length > 0;
+  const hasMaterial = material.text.trim().length > 0;
   const planInput = useMemo(
-    () => createPlanInput(profile.subject, profile.examDate, material.summary),
-    [material.summary, profile.examDate, profile.subject],
+    () => createPlanInput(profile.subject, profile.examDate, material.summary, material.text),
+    [material.summary, material.text, profile.examDate, profile.subject],
   );
-  const plan = getPlan(planInput);
+  const plan = hasSavedSubject && hasMaterial ? getPlan(planInput) : null;
 
   useEffect(() => {
-    if (!isProfileReady || !profile.examDate.trim() || plan) {
+    setDraftProfile(profile);
+  }, [profile]);
+
+  useEffect(() => {
+    setSelectedDayIndex(0);
+  }, [planInput]);
+
+  useEffect(() => {
+    if (!isProfileReady) {
+      return;
+    }
+
+    if (!hasSavedSubject || !profile.examDate.trim() || !hasMaterial) {
+      setIsLoadingPlan(false);
+      setPlanError(null);
+      return;
+    }
+
+    if (plan) {
       return;
     }
 
@@ -92,10 +114,19 @@ export function TodayPage() {
     return () => {
       isCurrent = false;
     };
-  }, [isProfileReady, plan, planInput, savePlan]);
+  }, [hasMaterial, hasSavedSubject, isProfileReady, plan, planInput, profile.examDate, savePlan]);
 
-  const dateChips = buildDateChips(plan, profile.examDate);
-  const todayTasks = plan?.today ?? [];
+  const dateChips = hasSavedSubject ? buildDateChips(plan, profile.examDate) : [];
+  const selectedPlanDay = plan?.days[selectedDayIndex] ?? null;
+  const selectedTasks = selectedPlanDay?.tasks ?? plan?.today ?? [];
+  const selectedDate = selectedPlanDay?.date ?? profile.examDate;
+  const selectedTitle = selectedPlanDay?.label ?? (profile.subject.trim() || '과목을 입력하세요');
+  const selectedDdayLabel = dateChips[selectedDayIndex]?.label.replace(' 오늘', '') ?? formatDday(profile.examDate);
+  const hasProfileChanges = draftProfile.subject !== profile.subject || draftProfile.examDate !== profile.examDate;
+
+  function handleSaveProfile() {
+    setProfile(draftProfile);
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 xl:px-0">
@@ -111,106 +142,141 @@ export function TodayPage() {
           <span className="text-sm font-semibold text-[#434655]">과목</span>
           <input
             type="text"
-            value={profile.subject}
-            onChange={(event) => setProfile({ ...profile, subject: event.target.value })}
+            value={draftProfile.subject}
+            onChange={(event) => setDraftProfile({ ...draftProfile, subject: event.target.value })}
             className="rounded-xl border border-[#c3c6d7] px-4 py-3 text-sm outline-none transition focus:border-[#004ac6] focus:ring-4 focus:ring-[#004ac6]/10"
-            placeholder="운영체제"
+            placeholder="과목명을 입력하세요"
           />
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-semibold text-[#434655]">시험일</span>
           <input
             type="date"
-            value={profile.examDate}
-            onChange={(event) => setProfile({ ...profile, examDate: event.target.value })}
+            value={draftProfile.examDate}
+            onChange={(event) => setDraftProfile({ ...draftProfile, examDate: event.target.value })}
             className="rounded-xl border border-[#c3c6d7] px-4 py-3 text-sm outline-none transition focus:border-[#004ac6] focus:ring-4 focus:ring-[#004ac6]/10"
           />
         </label>
+        <div className="flex justify-end md:col-start-2">
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            disabled={!hasProfileChanges}
+            className="shrink-0 rounded-full bg-[#004ac6] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#003ea8] disabled:cursor-not-allowed disabled:bg-[#c3c6d7] disabled:text-[#737686] disabled:shadow-none"
+          >
+            저장
+          </button>
+        </div>
       </section>
 
-      <div className="hide-scrollbar mb-6 flex items-center gap-2 overflow-x-auto pb-4">
-        {dateChips.map((chip, index) => (
-          <button
-            key={chip.key}
-            type="button"
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
-              index === 0
-                ? 'bg-[#004ac6] text-white shadow-sm'
-                : 'border border-[#c3c6d7] bg-white text-[#434655] hover:bg-[#ededf9]'
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
-
-      <section className="relative mb-6 overflow-hidden rounded-2xl border border-[#e1e2ed] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
-        <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#004ac6]" />
-
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-2 flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-[#dbe1ff] px-2.5 py-1 text-xs font-semibold text-[#00174b]">
+      {hasSavedSubject && !hasMaterial ? (
+        <section className="relative mb-6 overflow-hidden rounded-2xl border border-[#e1e2ed] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+          <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#00687a]" />
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <span className="mb-3 inline-flex rounded-full bg-[#dbe1ff] px-2.5 py-1 text-xs font-semibold text-[#00174b]">
                 {formatDday(profile.examDate)}
               </span>
-              <span className="text-sm leading-5 text-[#434655]">{formatKoreanDate(profile.examDate)}</span>
+              <h2 className="text-2xl font-semibold leading-tight text-[#191b23]">학습 자료를 업로드해 주세요.</h2>
+              <p className="mt-2 text-sm leading-6 text-[#434655]">
+                {profile.subject} 시험 계획은 업로드한 자료의 키워드와 핵심 문장을 바탕으로 만들어집니다.
+              </p>
             </div>
-            <h2 className="text-2xl font-semibold leading-tight text-[#191b23]">
-              {profile.subject.trim() || '과목을 입력하세요'}
-            </h2>
+            <div className="rounded-xl bg-[#ededf9] p-3">
+              <span className="material-symbols-outlined text-3xl text-[#00687a]">description</span>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {hasSavedSubject && hasMaterial ? (
+        <>
+          <div className="hide-scrollbar mb-6 flex items-center gap-2 overflow-x-auto pb-4">
+            {dateChips.map((chip, index) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => setSelectedDayIndex(index)}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
+                  index === selectedDayIndex
+                    ? 'bg-[#004ac6] text-white shadow-sm'
+                    : 'border border-[#c3c6d7] bg-white text-[#434655] hover:bg-[#ededf9]'
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
 
-          <div className="rounded-xl bg-[#ededf9] p-3">
-            <span className="material-symbols-outlined text-3xl text-[#004ac6]">developer_board</span>
-          </div>
-        </div>
+          <section className="relative mb-6 overflow-hidden rounded-2xl border border-[#e1e2ed] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+            <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#004ac6]" />
 
-        <div className="space-y-4">
-          {isLoadingPlan ? (
-            <p className="rounded-xl bg-[#f3f3fe] px-4 py-6 text-sm text-[#434655]">오늘 할 일을 생성하는 중...</p>
-          ) : null}
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <div className="mb-2 flex flex-wrap items-center gap-3">
+                  <span className="rounded-full bg-[#dbe1ff] px-2.5 py-1 text-xs font-semibold text-[#00174b]">
+                    {selectedDdayLabel}
+                  </span>
+                  <span className="text-sm leading-5 text-[#434655]">{formatKoreanDate(selectedDate)}</span>
+                </div>
+                <h2 className="text-2xl font-semibold leading-tight text-[#191b23]">
+                  {selectedTitle}
+                </h2>
+              </div>
 
-          {!isLoadingPlan && planError ? (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              {planError}
-            </p>
-          ) : null}
+              <div className="rounded-xl bg-[#ededf9] p-3">
+                <span className="material-symbols-outlined text-3xl text-[#004ac6]">developer_board</span>
+              </div>
+            </div>
 
-          {!isLoadingPlan && !planError && todayTasks.length === 0 ? (
-            <p className="rounded-xl bg-[#f3f3fe] px-4 py-6 text-sm text-[#434655]">
-              시험일을 설정하면 오늘 할 일이 표시됩니다.
-            </p>
-          ) : null}
+            <div className="space-y-4">
+              {isLoadingPlan ? (
+                <p className="rounded-xl bg-[#f3f3fe] px-4 py-6 text-sm text-[#434655]">오늘 할 일을 생성하는 중...</p>
+              ) : null}
 
-          {!isLoadingPlan && !planError
-            ? todayTasks.map((task, index) => (
-                <article
-                  key={task.id}
-                  className="group relative overflow-hidden rounded-xl border border-transparent bg-[#f3f3fe] p-4 text-left transition hover:border-[#e1e2ed] hover:bg-white"
-                >
-                  <div
-                    className="absolute bottom-0 left-0 top-0 w-1"
-                    style={{ backgroundColor: TASK_ACCENTS[index % TASK_ACCENTS.length] }}
-                  />
-                  <p className="text-sm font-medium leading-5 text-[#191b23] transition group-hover:text-[#004ac6]">
-                    {task.title}
-                  </p>
-                  {task.description ? (
-                    <p className="mt-1 text-sm leading-5 text-[#434655]">{task.description}</p>
-                  ) : null}
-                </article>
-              ))
-            : null}
-        </div>
+              {!isLoadingPlan && planError ? (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                  {planError}
+                </p>
+              ) : null}
 
-        <button
-          type="button"
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#004ac6] py-4 text-sm font-medium text-white shadow-sm transition hover:bg-[#003ea8]"
-        >
-          <span className="material-symbols-outlined">play_circle</span>
-          오늘 공부 시작하기
-        </button>
-      </section>
+              {!isLoadingPlan && !planError && selectedTasks.length === 0 ? (
+                <p className="rounded-xl bg-[#f3f3fe] px-4 py-6 text-sm text-[#434655]">
+                  시험일을 설정하면 오늘 할 일이 표시됩니다.
+                </p>
+              ) : null}
+
+              {!isLoadingPlan && !planError
+                ? selectedTasks.map((task, index) => (
+                    <article
+                      key={task.id}
+                      className="group relative overflow-hidden rounded-xl border border-transparent bg-[#f3f3fe] p-4 text-left transition hover:border-[#e1e2ed] hover:bg-white"
+                    >
+                      <div
+                        className="absolute bottom-0 left-0 top-0 w-1"
+                        style={{ backgroundColor: TASK_ACCENTS[index % TASK_ACCENTS.length] }}
+                      />
+                      <p className="text-sm font-medium leading-5 text-[#191b23] transition group-hover:text-[#004ac6]">
+                        {task.title}
+                      </p>
+                      {task.description ? (
+                        <p className="mt-1 text-sm leading-5 text-[#434655]">{task.description}</p>
+                      ) : null}
+                    </article>
+                  ))
+                : null}
+            </div>
+
+            <button
+              type="button"
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#004ac6] py-4 text-sm font-medium text-white shadow-sm transition hover:bg-[#003ea8]"
+            >
+              <span className="material-symbols-outlined">play_circle</span>
+              오늘 공부 시작하기
+            </button>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -248,6 +314,7 @@ function buildCalendarDays(examDate: string) {
 
 export function TodayUpcomingPanel() {
   const { profile } = useStudyProfile();
+  const hasSavedSubject = profile.subject.trim().length > 0;
   const exam = new Date(`${profile.examDate}T00:00:00`);
   const monthLabel = Number.isNaN(exam.getTime())
     ? '시험일 미설정'
@@ -256,18 +323,22 @@ export function TodayUpcomingPanel() {
 
   return (
     <aside className="hidden h-screen w-[320px] overflow-y-auto border-l border-[#c3c6d7] bg-white px-6 py-8 xl:fixed xl:right-0 xl:top-0 xl:block">
-      <h3 className="mb-4 text-xl font-semibold leading-tight text-[#191b23]">Upcoming</h3>
+      {hasSavedSubject ? (
+        <>
+          <h3 className="mb-4 text-xl font-semibold leading-tight text-[#191b23]">Upcoming</h3>
 
-      <section className="relative mb-6 overflow-hidden rounded-xl border border-[#e1e2ed] bg-[#f3f3fe] p-4">
-        <div className="absolute right-0 top-0 p-3 opacity-10">
-          <span className="material-symbols-outlined text-6xl">event_upcoming</span>
-        </div>
-        <p className="mb-1 text-xs font-semibold text-[#004ac6]">다음 시험</p>
-        <h4 className="mb-2 text-2xl font-semibold leading-tight text-[#191b23]">{profile.subject}</h4>
-        <span className="inline-block rounded-full bg-[#f59e0b] px-3 py-1 text-sm font-medium text-white shadow-sm">
-          {formatDday(profile.examDate)}
-        </span>
-      </section>
+          <section className="relative mb-6 overflow-hidden rounded-xl border border-[#e1e2ed] bg-[#f3f3fe] p-4">
+            <div className="absolute right-0 top-0 p-3 opacity-10">
+              <span className="material-symbols-outlined text-6xl">event_upcoming</span>
+            </div>
+            <p className="mb-1 text-xs font-semibold text-[#004ac6]">다음 시험</p>
+            <h4 className="mb-2 text-2xl font-semibold leading-tight text-[#191b23]">{profile.subject}</h4>
+            <span className="inline-block rounded-full bg-[#f59e0b] px-3 py-1 text-sm font-medium text-white shadow-sm">
+              {formatDday(profile.examDate)}
+            </span>
+          </section>
+        </>
+      ) : null}
 
       <section className="rounded-xl border border-[#e1e2ed] bg-white p-4">
         <div className="mb-4 flex items-center justify-between">
@@ -284,9 +355,9 @@ export function TodayUpcomingPanel() {
             <div
               key={`${day.day}-${index}`}
               className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full ${
-                day.today
+                hasSavedSubject && day.today
                   ? 'bg-[#004ac6] text-white'
-                  : day.exam
+                  : hasSavedSubject && day.exam
                     ? 'font-bold text-[#004ac6]'
                     : day.muted
                       ? 'text-[#9ca3af]'

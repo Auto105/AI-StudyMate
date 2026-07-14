@@ -29,8 +29,7 @@ export function AppNavigation({ activeTab, onChange }: AppNavigationProps) {
               <span className="material-symbols-outlined">school</span>
             </div>
             <div>
-              <p className="text-base font-semibold leading-tight text-[#191b23]">AI-StudyMate</p>
-              <p className="text-xs font-medium text-[#737686]">Study first</p>
+              <p className="text-lg font-semibold leading-none text-[#191b23]">AI-StudyMate</p>
             </div>
           </div>
         </div>
@@ -72,18 +71,7 @@ export function AppNavigation({ activeTab, onChange }: AppNavigationProps) {
         })}
       </div>
 
-      <div className="mt-auto px-4">
-        <button
-          type="button"
-          onClick={() => onChange('today')}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563eb] py-3 text-sm font-medium text-white transition hover:bg-[#b4c5ff] hover:text-[#00174b]"
-        >
-          <span className="material-symbols-outlined">bolt</span>
-          Start Studying Today
-        </button>
-      </div>
-
-      <div className="border-t border-[#e1e2ed] px-3 pt-4">
+      <div className="mt-auto border-t border-[#e1e2ed] px-3 pt-4">
         {[
           ['settings', 'Settings'],
           ['help', 'Support'],

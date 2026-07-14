@@ -4,8 +4,9 @@ import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
+import { useStudyProfile } from '@/hooks/useStudyProfile';
 import { summarizeMaterial, uploadMaterial } from '@/lib/api/client';
-import { getSummarizeFallback } from '@/lib/fallbacks';
+import { formatDday } from '@/lib/date';
 import { createTextPreview } from '@/lib/pdf';
 
 export function MaterialsPage() {
@@ -66,8 +67,7 @@ export function MaterialsPage() {
       const summary = await summarizeMaterial({ text });
       setMaterial({ ...material, summary });
     } catch {
-      setMaterial({ ...material, summary: getSummarizeFallback(text) });
-      setError('API 요청에 실패해 데모 요약을 불러왔습니다.');
+      setError('요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.');
       setShowFallback(true);
     } finally {
       setIsSummarizing(false);
@@ -113,7 +113,7 @@ export function MaterialsPage() {
               <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-[#00687a] opacity-50" />
               <div className="mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#434655]">edit_note</span>
-                <h3 className="text-xl font-semibold leading-snug text-[#191b23]">텍스트 직접 입력</h3>
+                <h3 className="text-xl font-semibold leading-snug text-[#191b23]">텍스트 입력</h3>
               </div>
               <textarea
                 value={material.text}
@@ -122,10 +122,11 @@ export function MaterialsPage() {
                     ...material,
                     text: event.target.value,
                     preview: event.target.value.slice(0, 280),
+                    summary: undefined,
                   })
                 }
                 className="min-h-0 flex-1 resize-none rounded-lg border border-[#c3c6d7] bg-[#f3f3fe] p-4 text-base leading-6 text-[#191b23] outline-none transition placeholder:text-[#9ca3af] focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
-                placeholder="강의 노트나 학습 내용을 직접 붙여넣어 주세요."
+                placeholder={`강의 노트와 학습내용을 붙여넣으세요.\nTIP: PDF가 있다면 PDF를 우선적으로 선택해주세요.`}
               />
               <div className="mt-3 flex items-center justify-between gap-3">
                 <button
@@ -233,8 +234,11 @@ export function MaterialsPage() {
 }
 
 function MaterialsRightPanel() {
+  const { profile } = useStudyProfile();
+  const subject = profile.subject.trim() || '과목 미설정';
+
   return (
-    <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-l border-[#c3c6d7] bg-white px-6 py-6 xl:flex">
+    <aside className="hidden h-screen w-[320px] shrink-0 flex-col overflow-y-auto border-l border-[#c3c6d7] bg-white px-6 py-8 xl:fixed xl:right-0 xl:top-0 xl:flex">
       <section className="mb-8">
         <h3 className="mb-4 text-xl font-semibold leading-snug text-[#191b23]">Storage Status</h3>
         <div className="rounded-xl bg-[#ededf9] p-4">
@@ -256,11 +260,11 @@ function MaterialsRightPanel() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3 rounded-lg border border-[#c3c6d7] bg-white p-3">
             <div className="flex h-10 w-10 items-center justify-center rounded bg-[#f59e0b]/10 text-[#f59e0b]">
-              <span className="text-[10px] font-semibold">D-2</span>
+              <span className="text-[10px] font-semibold">{formatDday(profile.examDate)}</span>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-[#191b23]">운영체제 중간고사</h4>
-              <p className="text-[12px] leading-5 text-[#434655]">Need to summarize Week 5</p>
+              <h4 className="text-sm font-medium text-[#191b23]">{subject} 시험</h4>
+              <p className="text-[12px] leading-5 text-[#434655]">자료 요약과 핵심 개념을 확인하세요.</p>
             </div>
           </div>
         </div>
