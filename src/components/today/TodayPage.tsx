@@ -55,6 +55,7 @@ export function TodayPage() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const [showStudyStartToast, setShowStudyStartToast] = useState(false);
   const hasSavedSubject = profile.subject.trim().length > 0;
   const hasMaterial = material.text.trim().length > 0;
   const planInput = useMemo(
@@ -70,6 +71,16 @@ export function TodayPage() {
   useEffect(() => {
     setSelectedDayIndex(0);
   }, [planInput]);
+
+  useEffect(() => {
+    if (!showStudyStartToast) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setShowStudyStartToast(false), 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showStudyStartToast]);
 
   useEffect(() => {
     if (!isProfileReady) {
@@ -126,6 +137,13 @@ export function TodayPage() {
 
   function handleSaveProfile() {
     setProfile(draftProfile);
+  }
+
+  function handleSelectDay(index: number) {
+    setSelectedDayIndex(index);
+    window.requestAnimationFrame(() => {
+      document.getElementById('today-study-plan')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   return (
@@ -196,7 +214,7 @@ export function TodayPage() {
               <button
                 key={chip.key}
                 type="button"
-                onClick={() => setSelectedDayIndex(index)}
+                onClick={() => handleSelectDay(index)}
                 className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
                   index === selectedDayIndex
                     ? 'bg-[#004ac6] text-white shadow-sm'
@@ -208,7 +226,10 @@ export function TodayPage() {
             ))}
           </div>
 
-          <section className="relative mb-6 overflow-hidden rounded-2xl border border-[#e1e2ed] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+          <section
+            id="today-study-plan"
+            className="scroll-mt-20 relative mb-6 overflow-hidden rounded-2xl border border-[#e1e2ed] bg-white p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]"
+          >
             <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#004ac6]" />
 
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -269,6 +290,7 @@ export function TodayPage() {
 
             <button
               type="button"
+              onClick={() => setShowStudyStartToast(true)}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#004ac6] py-4 text-sm font-medium text-white shadow-sm transition hover:bg-[#003ea8]"
             >
               <span className="material-symbols-outlined">play_circle</span>
@@ -276,6 +298,15 @@ export function TodayPage() {
             </button>
           </section>
         </>
+      ) : null}
+
+      {showStudyStartToast ? (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 whitespace-pre-line rounded-2xl bg-[#191b23] px-5 py-3 text-center text-sm font-medium leading-6 text-white shadow-lg"
+        >
+          {'공부를 시작하겠습니다.\n준비 중인 기능입니다.'}
+        </div>
       ) : null}
     </div>
   );

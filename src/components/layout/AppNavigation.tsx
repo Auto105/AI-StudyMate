@@ -5,6 +5,7 @@ import type { StudyTabId } from '@/types/study';
 interface AppNavigationProps {
   activeTab: StudyTabId;
   onChange: (tabId: StudyTabId) => void;
+  onUnavailableAction?: () => void;
 }
 
 const NAVIGATION_ITEMS: Array<{
@@ -13,13 +14,13 @@ const NAVIGATION_ITEMS: Array<{
   icon: string;
   badge?: string;
 }> = [
-  { id: 'today', label: 'Today', icon: 'calendar_today' },
-  { id: 'materials', label: 'Materials', icon: 'description' },
-  { id: 'questions', label: 'Questions', icon: 'quiz' },
-  { id: 'quiz', label: 'Quiz', icon: 'extension', badge: 'Bonus' },
+  { id: 'today', label: '오늘 할 일', icon: 'calendar_today' },
+  { id: 'materials', label: '학습 자료', icon: 'description' },
+  { id: 'questions', label: '질문', icon: 'quiz' },
+  { id: 'quiz', label: '퀴즈', icon: 'extension', badge: 'Bonus' },
 ];
 
-export function AppNavigation({ activeTab, onChange }: AppNavigationProps) {
+export function AppNavigation({ activeTab, onChange, onUnavailableAction }: AppNavigationProps) {
   return (
     <nav className="hidden h-screen w-[260px] flex-col border-r border-[#c3c6d7] bg-white py-8 xl:fixed xl:left-0 xl:top-0 xl:z-40 xl:flex">
       <div className="mb-6 px-6">
@@ -73,12 +74,13 @@ export function AppNavigation({ activeTab, onChange }: AppNavigationProps) {
 
       <div className="mt-auto border-t border-[#e1e2ed] px-3 pt-4">
         {[
-          ['settings', 'Settings'],
-          ['help', 'Support'],
+          ['settings', '설정'],
+          ['help', '고객센터'],
         ].map(([icon, label]) => (
           <button
             key={label}
             type="button"
+            onClick={onUnavailableAction}
             className="group flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-[#434655] transition hover:bg-[#e7e7f3]"
           >
             <span className="material-symbols-outlined">{icon}</span>

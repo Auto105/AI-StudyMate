@@ -8,6 +8,7 @@ import { useStudyProfile } from '@/hooks/useStudyProfile';
 import { summarizeMaterial, uploadMaterial } from '@/lib/api/client';
 import { formatDday } from '@/lib/date';
 import { createTextPreview } from '@/lib/pdf';
+import type { StudySummary } from '@/types/study';
 
 export function MaterialsPage() {
   const { material, setMaterial } = useStudyMaterials();
@@ -16,6 +17,7 @@ export function MaterialsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
   const summaryTitle = summary?.keywords.length ? `${summary.keywords[0]} 자료 기반` : 'AI 요약';
 
@@ -71,6 +73,23 @@ export function MaterialsPage() {
       setShowFallback(true);
     } finally {
       setIsSummarizing(false);
+    }
+  }
+
+  async function handleCopySummary() {
+    if (!summary) {
+      setCopyMessage('복사할 요약이 없습니다.');
+      window.setTimeout(() => setCopyMessage(null), 1800);
+      return;
+    }
+
+    try {
+      await copyText(formatSummaryForCopy(summary));
+      setCopyMessage('복사되었습니다.');
+    } catch {
+      setCopyMessage('복사에 실패했습니다.');
+    } finally {
+      window.setTimeout(() => setCopyMessage(null), 1800);
     }
   }
 
@@ -157,7 +176,11 @@ export function MaterialsPage() {
                 <p className="text-lg leading-7 text-[#434655]">등록한 학습 자료에서 핵심 내용만 정리했어요.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className="flex items-center gap-2 rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-[#191b23] shadow-sm transition hover:bg-[#f3f3fe]">
+                <button
+                  type="button"
+                  onClick={() => void handleCopySummary()}
+                  className="flex items-center gap-2 rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-[#191b23] shadow-sm transition hover:bg-[#f3f3fe]"
+                >
                   <span className="material-symbols-outlined text-[20px]">content_copy</span>
                   <span className="text-sm font-medium">복사하기</span>
                 </button>
@@ -229,29 +252,83 @@ export function MaterialsPage() {
       </div>
 
       <ApiFallbackOverlay isVisible={showFallback} onRetry={() => setShowFallback(false)} />
+      {copyMessage ? (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#191b23] px-5 py-3 text-sm font-medium text-white shadow-lg"
+        >
+          {copyMessage}
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function formatSummaryForCopy(summary: StudySummary) {
+  return [
+    '[핵심 개념]',
+    ...summary.concepts.map((concept, index) => `${index + 1}. ${concept}`),
+    '',
+    '[핵심 키워드]',
+    summary.keywords.join(', '),
+    '',
+    '[쉽게 이해하기]',
+    summary.easyExplain,
+  ].join('\n');
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
 }
 
 function MaterialsRightPanel() {
   const { profile } = useStudyProfile();
   const subject = profile.subject.trim() || '과목 미설정';
+  const { material } = useStudyMaterials();
+  const hasMaterial = material.text.trim().length > 0;
+  const hasSummary = Boolean(material.summary);
+  const hasExam = profile.subject.trim().length > 0 && profile.examDate.trim().length > 0;
 
   return (
     <aside className="hidden h-screen w-[320px] shrink-0 flex-col overflow-y-auto border-l border-[#c3c6d7] bg-white px-6 py-8 xl:fixed xl:right-0 xl:top-0 xl:flex">
       <section className="mb-8">
         <h3 className="mb-4 text-xl font-semibold leading-snug text-[#191b23]">Storage Status</h3>
         <div className="rounded-xl bg-[#ededf9] p-4">
-          <div className="mb-2 flex items-end justify-between">
-            <span className="text-xs font-semibold text-[#434655]">Used Space</span>
-            <span className="text-xl font-semibold text-[#191b23]">
-              1.2 <span className="text-sm font-normal text-[#434655]">GB</span>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-[#434655]">Current Data</span>
+            <span className="rounded-full bg-[#00687a]/10 px-2.5 py-1 text-xs font-semibold text-[#00687a]">
+              로컬 저장됨
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[#c3c6d7]/30">
-            <div className="h-full w-[24%] rounded-full bg-[#004ac6]" />
+          <div className="space-y-3 text-sm leading-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#434655]">학습 자료</span>
+              <span className="font-semibold text-[#191b23]">
+                {hasMaterial ? `${material.text.length.toLocaleString()}자` : '없음'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#434655]">AI 요약</span>
+              <span className="font-semibold text-[#191b23]">{hasSummary ? '저장됨' : '미생성'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#434655]">시험 정보</span>
+              <span className="font-semibold text-[#191b23]">{hasExam ? '저장됨' : '미설정'}</span>
+            </div>
           </div>
-          <p className="mt-2 text-right text-xs font-semibold text-[#434655]">5 GB Total</p>
         </div>
       </section>
 
