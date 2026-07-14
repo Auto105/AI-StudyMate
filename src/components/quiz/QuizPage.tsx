@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ApiFallbackOverlay } from '@/components/common/ApiFallbackOverlay';
+import { NAVIGATE_TAB_EVENT } from '@/components/layout/AppShell';
 import { useStudyData } from '@/hooks/useStudyData';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
 import { createQuiz } from '@/lib/api/client';
@@ -43,6 +44,7 @@ export function QuizPage() {
   const currentQuestion = questions[currentIndex] ?? null;
   const totalQuestions = questions.length;
   const progressWidth = totalQuestions > 0 ? `${((currentIndex + 1) / totalQuestions) * 100}%` : '0%';
+  const isComplete = totalQuestions > 0 && currentIndex >= totalQuestions;
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -83,6 +85,19 @@ export function QuizPage() {
     }));
   }
 
+  function handleRestart() {
+    setCurrentIndex(0);
+    setAnswers({});
+  }
+
+  function handleNavigateToday() {
+    window.dispatchEvent(
+      new CustomEvent(NAVIGATE_TAB_EVENT, {
+        detail: { tab: 'today' as const },
+      }),
+    );
+  }
+
   return (
     <div className="relative">
       <div
@@ -106,7 +121,31 @@ export function QuizPage() {
             <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#2563eb]" />
 
             <div className="pl-4">
-              {currentQuestion ? (
+              {isComplete ? (
+                <div className="flex min-h-80 flex-col items-center justify-center px-4 text-center">
+                  <span className="material-symbols-outlined mb-4 text-5xl text-[#2563eb]">task_alt</span>
+                  <h2 className="mb-2 text-3xl font-semibold leading-snug text-[#191b23]">퀴즈 완료!</h2>
+                  <p className="mb-8 text-base leading-7 text-[#434655]">
+                    총 {totalQuestions}문제를 모두 풀었습니다.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleRestart}
+                      className="rounded-xl border border-[#c3c6d7] bg-white px-5 py-3 text-sm font-medium text-[#191b23] transition hover:bg-[#f3f3fe]"
+                    >
+                      다시 풀기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNavigateToday}
+                      className="rounded-xl bg-[#2563eb] px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-[#004ac6]"
+                    >
+                      Today로 돌아가기
+                    </button>
+                  </div>
+                </div>
+              ) : currentQuestion ? (
                 <>
                   <div className="mb-6 flex items-center justify-between gap-4">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#2563eb]">
@@ -170,11 +209,10 @@ export function QuizPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCurrentIndex((index) => Math.min(totalQuestions - 1, index + 1))}
-                      disabled={currentIndex === totalQuestions - 1}
+                      onClick={() => setCurrentIndex((index) => Math.min(totalQuestions, index + 1))}
                       className="flex items-center gap-2 rounded-xl bg-[#2563eb] px-6 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#004ac6] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      다음
+                      {currentIndex === totalQuestions - 1 ? '완료' : '다음'}
                       <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                     </button>
                   </div>
