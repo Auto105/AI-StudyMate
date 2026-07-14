@@ -1,83 +1,195 @@
-# AI-StudyMate
+# AI StudyMate
 
-AI-StudyMate는 대학생을 위한 AI 학습 도우미 POC입니다. 핵심은 단순한 AI 채팅이 아니라, 과목·시험일·학습자료 상태를 바탕으로 앱을 열었을 때 “오늘 무엇을 공부해야 하는지” 먼저 제안하는 것입니다.
+> **강의 전사 텍스트와 PDF 자료를 기반으로 AI 요약, 자료 기반 Q&A, 문제 생성, 그리고 시험일까지의 학습 계획을 제공하는 대학생용 학습 도우미**
 
-## 핵심 차별점
+AI StudyMate는 단순히 질문에 답하는 챗봇이 아니라, 학생이 학습 자료를 입력하면 **무엇을 이해해야 하고, 오늘 무엇을 공부해야 하는지**까지 연결해 주는 AI 학습 서비스 POC입니다.
 
-- 기본 진입 화면은 `오늘` 탭입니다.
-- 질문보다 먼저 다음 행동을 제안합니다.
-- D-day 변화에 따라 오늘 할 일이 달라지는 구조를 갖습니다. 데모 기준은 D-5와 D-2입니다.
-- Quiz는 필수 동선이 아니라 보너스 기능입니다.
-- Today 화면에는 진도율, 학습량 %, AI 점수, 중요도 별점, 필수 퀴즈를 넣지 않습니다.
+---
 
-## Phase 우선순위
+## 1. 문제 정의
 
-필수 구현 순서는 다음입니다.
+대학생은 강의자료, 필기, 시험일 정보를 여러 곳에서 따로 관리합니다.
+
+그 결과 다음과 같은 문제가 발생합니다.
+
+- 강의자료가 길어 핵심 내용을 빠르게 파악하기 어렵습니다.
+- PDF, 필기, 전사 텍스트가 흩어져 있어 복습 흐름이 끊깁니다.
+- 시험일까지 무엇을 언제 공부해야 할지 직접 계획해야 합니다.
+- 생성형 AI를 사용하더라도 매번 자료를 다시 설명하고 질문해야 합니다.
+
+---
+
+## 2. 해결 방법
+
+AI StudyMate는 다음 흐름으로 학습을 지원합니다.
 
 ```text
-P0 → P1 → P2 → P4 → P5
+전사 텍스트 붙여넣기 또는 PDF 업로드
+                ↓
+        자료 텍스트 통합
+                ↓
+      AI 요약 · 핵심 개념 추출
+                ↓
+      자료 기반 Q&A · 문제 생성
+                ↓
+     시험일까지의 Today 학습 계획
 ```
 
-`P3 Quiz`는 보너스이며, P4/P5 이후 시간이 남을 때만 다룹니다.
+사용자는 자료를 모두 읽지 않아도 핵심 내용을 빠르게 확인하고, 시험일까지 남은 기간에 맞춰 오늘의 학습 행동을 정할 수 있습니다.
 
-| Phase | 목표 | 상태 |
-| --- | --- | --- |
-| P0 | 범위·기반 고정, IA/API 이름 확정 | 기본 구조 반영 |
-| P1 | PDF 수집, 텍스트 추출 진입점 | Mock Route와 UI 골격 |
-| P2 | 요약 + 자료 근거 Q&A | Mock Route와 fallback |
-| P3 | Quiz 보너스 | 별도 탭의 최소 골격 |
-| P4 | Today/다음 행동/plan | 기본 진입 화면과 D-5/D-2 Mock |
-| P5 | 시연·배포·fallback | 문서와 Mock fallback 정리 |
+---
 
-## 기술 스택
+## 3. 핵심 기능
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- Route Handlers
-- OpenAI API 연결 예정
-- pdf-parse 연결 예정
-- localStorage
-- Vercel 배포 기준
-- npm
+### 자료 입력
 
-## 설치 방법
+- 강의 전사 텍스트 붙여넣기
+- PDF 업로드 및 서버 텍스트 추출
+- 추출 텍스트 최대 12,000자 사용
+- PDF 최대 5MB 지원
+
+### AI 학습 기능
+
+- 강의자료 요약
+- 핵심 키워드와 개념 추출
+- 쉬운 설명 생성
+- 자료 범위 안에서 Q&A
+- 객관식 및 OX 문제 생성
+
+### Today 학습 관리
+
+- 과목명과 시험일 저장
+- D-Day 자동 계산
+- 시험일까지 남은 기간에 따른 학습 계획 생성
+- D-5, D-2 등 날짜 변화에 따라 다른 학습 태스크 제공
+
+---
+
+## 4. 차별점
+
+일반적인 AI 챗봇은 사용자가 먼저 질문해야 동작합니다.
+
+AI StudyMate는 다음 행동까지 제안합니다.
+
+```text
+자료를 이해한다
+        ↓
+핵심 내용을 복습한다
+        ↓
+문제로 확인한다
+        ↓
+오늘 공부할 내용을 실행한다
+```
+
+즉, **자료 분석 결과를 일정 관리까지 연결하는 것**이 핵심 차별점입니다.
+
+---
+
+## 5. MVP 범위
+
+### 이번 POC에 포함
+
+- 텍스트 붙여넣기
+- PDF 업로드 및 텍스트 추출
+- AI 요약
+- 자료 기반 Q&A
+- 문제 생성
+- 시험일 기반 Today Plan
+- localStorage 기반 상태 저장
+- Mock API와 실제 OpenAI 전환 구조
+
+### 이번 POC에서 제외
+
+- 음성 직접 녹음
+- 음성 자동 텍스트 변환(STT)
+- DOCX 업로드
+- 로그인 및 멀티유저
+- Supabase 데이터베이스
+- RAG 및 Embedding
+- LMS 연동
+- OCR 기반 스캔 PDF 처리
+
+---
+
+## 6. 기술 스택
+
+- **Frontend:** Next.js App Router, React, TypeScript, Tailwind CSS
+- **Backend:** Next.js Route Handlers
+- **AI:** OpenAI API
+- **Document Processing:** pdf-parse
+- **State:** React Hooks, localStorage
+- **Deployment:** Vercel
+- **Collaboration:** GitHub, Pull Request, Draft PR
+
+---
+
+## 7. API 실행 모드
+
+기본값은 Mock 모드입니다.
+
+```env
+USE_MOCK_API=true
+```
+
+Mock 모드에서는 실제 OpenAI API 요청이 발생하지 않습니다.
+
+실제 OpenAI 연결을 사용할 때는 다음과 같이 설정합니다.
+
+```env
+USE_MOCK_API=false
+OPENAI_API_KEY=your_api_key
+```
+
+실제 지원되는 Route 범위는 `docs/API_CONTRACT.md`를 기준으로 확인합니다.
+
+---
+
+## 8. 설치 및 실행
+
+### 의존성 설치
 
 ```bash
 npm install
 ```
 
-## `.env.local` 설정 방법
+### 환경변수 설정
 
-`.env.example`을 참고해 `.env.local`을 생성합니다.
+프로젝트 루트에 `.env.local`을 생성합니다.
 
 ```env
 OPENAI_API_KEY=
 USE_MOCK_API=true
 ```
 
-실제 API 키와 `.env.local`은 커밋하지 않습니다.
+실제 API 키와 `.env.local`은 Git에 커밋하지 않습니다.
 
-## 개발 서버 실행 방법
+### 개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
-## 빌드 방법
+### 프로덕션 빌드
 
 ```bash
 npm run build
 ```
 
-## 폴더 구조
+---
+
+## 9. 프로젝트 구조
 
 ```text
 src/
 ├─ app/
-│  ├─ api/              # Route Handlers
+│  ├─ api/
+│  │  ├─ upload/
+│  │  ├─ summarize/
+│  │  ├─ chat/
+│  │  ├─ plan/
+│  │  └─ quiz/
 │  ├─ layout.tsx
-│  ├─ page.tsx          # AppShell만 렌더링
+│  ├─ page.tsx
 │  └─ globals.css
 ├─ components/
 │  ├─ common/
@@ -86,54 +198,74 @@ src/
 │  ├─ questions/
 │  ├─ quiz/
 │  └─ today/
-├─ constants/
 ├─ hooks/
 ├─ lib/
 │  ├─ api/
 │  ├─ mock/
+│  ├─ server/
 │  ├─ storage/
 │  └─ utils/
 └─ types/
+
+docs/
+├─ PRD.md
+├─ API_CONTRACT.md
+├─ QA_CHECKLIST.md
+├─ TEAM_HANDOFF.md
+└─ DEMO_SCRIPT.md
 ```
 
-## Mock 모드와 fallback
+---
 
-`USE_MOCK_API=true`이면 summarize, chat, plan, quiz가 Mock 응답을 반환합니다.
+## 10. 발표 시연 흐름
 
-- `summary`: 요약 키워드·개념·쉬운 설명 Mock 반환
-- `chat`: 자료 근거 질문만 답변하고, 자료 밖 질문은 `자료에 없습니다` 반환
-- `plan`: D-5와 D-2에서 서로 다른 오늘 할 일을 반환
-- `quiz`: 보너스 기능용 MCQ/OX Mock 반환
+```text
+1. Today 화면 소개
+2. 과목명과 시험일 설정
+3. Materials에서 PDF 업로드
+4. 추출된 텍스트 확인
+5. AI Summary 생성
+6. 자료 기반 질문
+7. Quiz 생성
+8. Today Plan 확인
+9. 시험일 변경 후 계획 변화 확인
+```
 
-캐시 파일 기반 fallback은 로드맵의 P5 범위이지만, 이번 작업에서는 실제 `cache/*.json` 파일과 캐시 로직을 구현하지 않았습니다.
+자세한 시연 순서는 `docs/DEMO_SCRIPT.md`를 참고합니다.
 
-## 자료 제한
+---
 
-- PDF 파일: 5MB 이하
-- 추출 텍스트: 최대 12,000자
-- 현재 실제 PDF 파싱은 구현하지 않았고 Mock 업로드 응답과 제한 검증만 둡니다.
+## 11. 평가 기준과 프로젝트 대응
 
-## 브랜치 전략
+| 평가 항목 | 프로젝트에서 보여줄 내용 |
+| --- | --- |
+| 문제 정의·기획 | 학습자료 분산과 복습 계획 문제, PRD 완성도 |
+| 구현 완성도 | PDF 업로드부터 요약·질문·문제·일정까지의 동작 흐름 |
+| AI 활용도 | 자료 기반 요약, Q&A, 문제 생성, 학습 계획 |
+| 창의성·실용성 | AI 결과를 Today 행동으로 연결하는 구조 |
+| 발표·전달력 | 짧고 안정적인 데모, 명확한 화면 전환, Q&A 대비 |
 
-- `main`: 발표와 배포가 가능한 안정 버전
-- `develop`: 팀 기능 통합 브랜치
-- `feature/*`: 기능별 작업 브랜치
+---
 
-## 현재 구현 범위
+## 12. 향후 발전 방향
 
-- 4개 탭 기본 구조: 오늘, 자료, 질문, 시험
-- 오늘 탭 기본 진입 및 D-day 배지
-- D-5/D-2에 따라 달라지는 Today Mock task 구조
-- 자료 탭 PDF 업로드 영역, 텍스트 fallback, 미리보기, 요약 결과 영역
-- 질문 탭 메시지 목록과 자료 기반 여부 표시
-- 시험 탭은 보너스 기능으로 분리
-- 5개 API Route 계약과 Mock 응답
-- 공통 타입, Mock 데이터, localStorage 훅
-- 협업 문서와 API 계약 문서
+- 음성 파일 직접 업로드 및 STT
+- DOCX 지원
+- 스캔 PDF OCR
+- Supabase 기반 사용자별 학습 기록
+- RAG 기반 대용량 문서 검색
+- LMS 및 학교 공지 연동
+- 개인화 복습 주기 추천
+- 모바일 앱 또는 PWA
+- 학습 통계와 장기 성과 분석
 
-## 향후 구현할 기능
+---
 
-- 실제 PDF 텍스트 추출
-- OpenAI 요약/질문/계획/퀴즈 생성 연결
-- cache fallback 구현
-- Vercel 환경변수 설정과 배포
+## 13. 브랜치 전략
+
+- `main`: 발표 및 배포 가능한 안정 버전
+- `develop`: 통합 테스트 브랜치
+- `feature`: 팀 기능 개발 브랜치
+- `integration`: QA, 문서, 배포 준비 브랜치
+
+모든 기능은 Pull Request와 리뷰를 거쳐 `develop`에 병합합니다.

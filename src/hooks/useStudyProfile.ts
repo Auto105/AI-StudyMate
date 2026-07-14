@@ -1,15 +1,9 @@
 'use client';
 
-import { DEMO_STUDY_PROFILE } from '@/constants/demo';
-import { STORAGE_KEYS } from '@/lib/storage/keys';
-import type { StudyProfile } from '@/types/study';
-import { useLocalStorage } from './useLocalStorage';
+import { useStudyData } from './useStudyData';
 
 export function useStudyProfile() {
-  const [profile, setProfile, isReady] = useLocalStorage<StudyProfile>(
-    STORAGE_KEYS.studyProfile,
-    DEMO_STUDY_PROFILE,
-  );
+  const { data, isReady, setProfile } = useStudyData();
 
-  return { profile, setProfile, isReady };
+  return { profile: data.profile, setProfile, isReady };
 }

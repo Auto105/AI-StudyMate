@@ -1,3 +1,5 @@
+import type { OxQuestion, QuizQuestion } from './quiz';
+
 export type StudyTabId = 'today' | 'materials' | 'questions' | 'quiz';
 
 export interface StudyTask {
@@ -17,16 +19,18 @@ export interface StudyProfile {
   examDate: string;
 }
 
-export interface StudyMaterial {
-  text: string;
-  preview: string;
-  summary?: StudySummary;
-}
-
 export interface StudySummary {
   keywords: string[];
   concepts: string[];
   easyExplain: string;
+}
+
+export type SummaryResult = StudySummary;
+
+export interface StudyMaterial {
+  text: string;
+  preview: string;
+  summary?: StudySummary;
 }
 
 export interface ChatMessage {
@@ -34,4 +38,94 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   grounded?: boolean;
+}
+
+export interface StudyPlanDay {
+  day: number;
+  date: string;
+  title: string;
+  tasks: string[];
+}
+
+export interface StudyPlan {
+  today: string[];
+  days: StudyPlanDay[];
+}
+
+export interface StudyPlanResult {
+  today: StudyTask[];
+  days: PlanDay[];
+}
+
+export interface QuizMcq {
+  question: string;
+  options: string[];
+  answer: string;
+  explanation: string;
+}
+
+export interface QuizOx {
+  question: string;
+  answer: boolean;
+  explanation: string;
+}
+
+export interface QuizResult {
+  mcq: QuizMcq[];
+  ox: QuizOx[];
+}
+
+export interface CachedSummary {
+  textHash: string;
+  result: SummaryResult;
+  updatedAt: string;
+}
+
+export interface PlanInput {
+  subject: string;
+  examDate: string;
+  keywords: string[];
+  concepts: string[];
+}
+
+export interface CachedPlan {
+  inputHash: string;
+  input: PlanInput;
+  result: StudyPlanResult;
+  updatedAt: string;
+}
+
+export interface StudyQuiz {
+  mcq: QuizQuestion[];
+  ox: OxQuestion[];
+}
+
+export interface CachedQuiz {
+  textHash: string;
+  result: StudyQuiz;
+  selectedChoice: string;
+  updatedAt: string;
+}
+
+export interface StudyData {
+  profile: StudyProfile;
+  extractedText: string;
+  preview: string;
+  summary: CachedSummary | null;
+  chatHistory: ChatMessage[];
+  plan: CachedPlan | null;
+  quiz: CachedQuiz | null;
+}
+
+export interface ApiChatResponse {
+  answer: string;
+  grounded?: boolean;
+}
+
+export interface ApiUploadResponse {
+  extractedText: string;
+}
+
+export interface ApiErrorResponse {
+  error: string;
 }
